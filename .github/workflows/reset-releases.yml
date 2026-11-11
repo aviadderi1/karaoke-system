@@ -1,0 +1,33 @@
+name: Reset releases (delete all old versions)
+
+# Run by hand from the Actions tab. Deletes every release and version tag,
+# so numbering can start again from 1.0.0. The code itself is not touched.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DELETE to remove all releases and tags'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  reset:
+    if: inputs.confirm == 'DELETE'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete all releases and tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          for tag in $(gh release list -R "$REPO" --limit 200 --json tagName -q '.[].tagName'); do
+            echo "Deleting release $tag"
+            gh release delete "$tag" -R "$REPO" --yes --cleanup-tag
+          done
+          for tag in $(gh api "repos/$REPO/tags" --paginate -q '.[].name'); do
+            echo "Deleting tag $tag"
+            gh api -X DELETE "repos/$REPO/git/refs/tags/$tag" || true
+          done
+          echo "Done: all releases and tags removed."

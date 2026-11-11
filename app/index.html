@@ -377,7 +377,7 @@ input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;bac
       <select id="mixSel" title="What you hear" style="display:none"><option value="original">Original</option><option value="guide">Playback + guide</option><option value="playback">Playback only</option></select>
       <select id="rate" title="Playback speed"><option value="0.5">50%</option><option value="0.75">75%</option><option value="1" selected>100%</option></select>
      </div>
-     <span class="flexr" style="gap:4px;margin-right:10px" title="Monitor volume (double-click = 100%)"><i class="ti ti-volume muted" id="volIco"></i><input type="range" id="volR" min="0" max="100" value="100" style="width:80px"></span>
+     <span class="flexr" style="gap:4px;margin-right:10px" title="Monitor volume (double-click = 100%)"><i class="ti ti-volume muted" id="volIco"></i><input type="range" id="volR" min="0" max="100" value="100" style="width:80px"><canvas id="ledM" width="132" height="22" title="Level meter (L / R)" style="width:66px;height:11px;margin-left:6px"></canvas></span>
      <span id="dur">00:00:00:00</span>
     </div>
    </div>
@@ -588,6 +588,7 @@ function ensureAudio(){
  mix=AC.createGain();analyser=AC.createAnalyser();analyser.fftSize=256;analyser.smoothingTimeConstant=0.75;monGain=AC.createGain();recDest=AC.createMediaStreamDestination();
  gA=AC.createGain();gV=AC.createGain();AC.createMediaElementSource(aud).connect(gA);AC.createMediaElementSource(vid).connect(gV);
  gVoc=AC.createGain();gVoc.gain.value=0;AC.createMediaElementSource(audV).connect(gVoc);gVoc.connect(mix);gA.connect(mix);gV.connect(mix);mix.connect(analyser);analyser.connect(monGain);monGain.connect(volGain=AC.createGain());volGain.gain.value=volCurve(S.vol);volGain.connect(AC.destination);mix.connect(recDest);routeAudio();
+ S.split=AC.createChannelSplitter(2);mix.connect(S.split);S.anL=AC.createAnalyser();S.anR=AC.createAnalyser();S.anL.fftSize=S.anR.fftSize=1024;S.split.connect(S.anL,0);S.split.connect(S.anR,1);
 }
 function routeAudio(){if(!AC)return;const useV=master()===vid,on=audOn('A1')?1:0;gA.gain.value=useV?0:on;gV.gain.value=useV?on:0;vid.muted=false}
 function master(){if(P.audioSource==='video'&&vid.src&&S.vidIsClip)return vid;if(aud.src)return aud;if(vid.src&&S.vidIsClip)return vid;return null}
@@ -1841,6 +1842,17 @@ async function openCastMenu(){const m=$('#castMenu');if(m.classList.contains('on
 $('#castBtn').onclick=e=>{e.stopPropagation();openCastMenu()};
 document.addEventListener('mousedown',e=>{if(!e.target.closest('#castMenu')&&!e.target.closest('#castBtn'))hideCastMenu()});
 if(window.ksDesktop&&ksDesktop.onCastRestart){ksDesktop.onCastRestart(()=>castStartRec());ksDesktop.onCastState(st=>{if(st.state==='error'&&CAST.on){toast('Cast error: '+st.msg,5000)}if(st.playerState==='IDLE'&&CAST.on){}})}
+
+/* ---------- LED level meter (L / R) ---------- */
+const LED={buf:new Float32Array(1024),lv:[-90,-90],pk:[-90,-90],pkT:[0,0],last:0,N:16};
+function ledDb(an){if(!an)return -90;an.getFloatTimeDomainData(LED.buf);let m=0;for(let i=0;i<LED.buf.length;i++){const v=Math.abs(LED.buf[i]);if(v>m)m=v}return m>0?20*Math.log10(m):-90}
+function ledColor(i,N,on){const f=i/(N-1);const c=f<0.62?(on?'#3ddc6a':'#123a1d'):f<0.85?(on?'#f2d23a':'#3d3510'):(on?'#ff3b30':'#40100d');return c}
+function drawLed(){const cv=$('#ledM');if(!cv)return;const now=performance.now(),dt=Math.min(0.1,(now-(LED.last||now))/1000);LED.last=now;const playing=typeof isPlaying==='function'&&isPlaying();
+ [S.anL,S.anR].forEach((an,ch)=>{const d=playing?ledDb(an):-90;LED.lv[ch]=d>LED.lv[ch]?d:Math.max(d,LED.lv[ch]-26*dt);if(LED.lv[ch]>=LED.pk[ch]){LED.pk[ch]=LED.lv[ch];LED.pkT[ch]=now}else if(now-LED.pkT[ch]>900)LED.pk[ch]=Math.max(-90,LED.pk[ch]-20*dt)});
+ const c=cv.getContext('2d'),W=cv.width,H=cv.height,N=LED.N,gap=2,lw=(W-gap*(N-1))/N,rh=(H-2)/2;c.clearRect(0,0,W,H);
+ const toN=db=>Math.round(clamp((db+48)/48,0,1)*N); // -48 dBFS .. 0 dBFS
+ for(let ch=0;ch<2;ch++){const n=toN(LED.lv[ch]),p=toN(LED.pk[ch])-1;for(let i=0;i<N;i++){const on=i<n||(i===p&&p>=0&&LED.pk[ch]>-47);c.fillStyle=ledColor(i,N,on);c.fillRect(i*(lw+gap),ch*(rh+2),lw,rh)}}}
+(function ledLoop(){drawLed();requestAnimationFrame(ledLoop)})();
 </script>
 </body>
 </html>
