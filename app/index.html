@@ -168,6 +168,14 @@ input[type=checkbox]{accent-color:var(--acc)}
 #wcPrev{background:#0d0d0d;border-radius:4px;display:block;width:100%;height:64px;margin-bottom:10px}
 #ctxMenu{position:fixed;z-index:86;background:#262626;border:1px solid var(--line2);border-radius:4px;padding:4px 0;min-width:190px;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 #ctxMenu.on{display:block}#ctxMenu div{padding:5px 14px;cursor:default}#ctxMenu div:hover{background:var(--acc);color:#fff}
+#fxSearch{position:sticky;top:-8px;z-index:5;background:var(--panel);margin:-8px -8px 6px;padding:8px 8px 6px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px}
+#fxSearch>i{color:var(--txt2);font-size:15px}#fxQ{flex:1;min-width:0;height:26px}
+#fxSug{position:absolute;left:8px;right:8px;top:38px;background:#262626;border:1px solid var(--line2);border-radius:4px;box-shadow:0 8px 24px rgba(0,0,0,.5);display:none;max-height:260px;overflow:auto}
+#fxSug div{padding:5px 10px;cursor:pointer;display:flex;justify-content:space-between;gap:8px}#fxSug div span{color:var(--txt2);font-size:11px;white-space:nowrap}
+#fxSug div.on,#fxSug div:hover{background:var(--acc);color:#fff}#fxSug div.on span,#fxSug div:hover span{color:#dbe9fa}
+#fxSug b{font-weight:600;color:#fff}
+.row.flash{animation:flash 1.6s}@keyframes flash{0%,40%{background:rgba(45,140,235,.35)}100%{background:transparent}}
+.fxhide{display:none!important}
 #drop{position:fixed;inset:0;border:3px dashed var(--acc);background:rgba(45,140,235,.08);display:none;z-index:95;align-items:center;justify-content:center;font-size:20px;color:#fff;pointer-events:none}
 #drop.on{display:flex}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
@@ -269,7 +277,7 @@ input[type=checkbox]{accent-color:var(--acc)}
     <textarea id="lyr" spellcheck="false" placeholder="Paste or type the lyrics here.&#10;&#10;Here comes the mor/ning&#10;light over the city"></textarea>
     <div class="flexr" style="margin-top:6px"><button class="pri" data-a="autosync"><i class="ti ti-wand"></i>Auto-sync</button><button id="toSync"><i class="ti ti-keyboard"></i>Tap sync</button><button id="spreadBtn" title="Spread words evenly inside lines that only have line timing"><i class="ti ti-arrows-split-2"></i>Auto-time words</button></div>
    </div>
-   <div class="pbody" data-b="fx"><div id="clipSec"></div><div id="lineFxCtl"></div><div id="fxCtl"></div><div id="logoCtl"></div>
+   <div class="pbody" data-b="fx"><div id="fxSearch"><i class="ti ti-search"></i><input type="text" id="fxQ" placeholder="Search effect controls" autocomplete="off" spellcheck="false"><button class="ghost" id="fxQx" title="Clear" style="display:none;padding:2px 4px"><i class="ti ti-x"></i></button><div id="fxSug"></div></div><div id="clipSec"></div><div id="lineFxCtl"></div><div id="fxCtl"></div><div id="logoCtl"></div>
     <div class="flexr" style="margin-top:8px"><button id="saveDef"><i class="ti ti-device-floppy"></i>Save as default style</button><button id="resetStyle"><i class="ti ti-restore"></i>Reset</button></div>
    </div>
    <div class="pbody" data-b="media">
@@ -1405,6 +1413,38 @@ function openLogoEditor(){if(!P.logo)return;const o=Object.assign({},LOGO_EDIT_D
  $('#leReset').onclick=()=>{Object.assign(o,LOGO_EDIT_DEF,{bg:'off'});ui();redraw()};
  $('#leCancel').onclick=()=>{closeModal();$('#modalBox').style.width=''};
  $('#leApply').onclick=()=>{const r=result||processLogo(orig,o);const src=r.toDataURL('image/png');const im=new Image();im.onload=()=>{const g=P.logo;const oldW=S.logoImg?S.logoImg.naturalWidth:im.naturalWidth;g.src=src;g.srcOrig=g.srcOrig||orig.src;g.edit={...o};S.logoImg=im;bump();buildLogoCtl();closeModal();$('#modalBox').style.width='';toast('Logo updated')};im.src=src}}
+
+/* ---------- effect controls search with autocomplete ---------- */
+const FX_ALIAS={'צבע':'color','גודל':'size','צל':'shadow','מסגרת':'border box frame','ספירה':'countdown','לוגו':'logo','סיבוב':'rotation','גופן':'font','פונט':'font','שקיפות':'opacity','קו מתאר':'stroke outline','קו':'stroke','מיקום':'position','שורה':'line','שורות':'lines','כותרת':'title','מילים':'lyrics','צביעה':'wipe fill','כיוון':'direction','רווח':'spacing tracking','רקע':'box background','זוהר':'glow','עובי':'width stroke','טשטוש':'softness blur'};
+function fxItems(){const out=[];$$('[data-b="fx"] .sec').forEach(sec=>{const sh=sec.querySelector('.sech');const title=sh?[...sh.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join('').trim():'';
+ sec.querySelectorAll('.row').forEach(row=>{const lb=row.querySelector('label');if(!lb)return;const t=lb.textContent.trim();if(!t||/^".*"$/.test(t))return;out.push({label:t,sec:title,row,secEl:sec})})});return out}
+function fxMatch(q,it){const terms=[q,...Object.entries(FX_ALIAS).filter(([he])=>q.includes(he)||he.startsWith(q)).map(([,en])=>en)].join(' ').toLowerCase().split(/\s+/).filter(Boolean);const hay=(it.label+' '+it.sec).toLowerCase();
+ let best=0;for(const w of terms){if(it.label.toLowerCase().startsWith(w))best=Math.max(best,3);else if(hay.split(/[\s,()]+/).some(x=>x.startsWith(w)))best=Math.max(best,2);else if(hay.includes(w))best=Math.max(best,1)}return best}
+let fxSugIdx=0,fxSugList=[];
+function fxFilter(q){q=q.trim().toLowerCase();const items=fxItems();$$('[data-b="fx"] .fxhide').forEach(e=>e.classList.remove('fxhide'));$('#fxQx').style.display=q?'':'none';
+ if(!q){$('#fxSug').style.display='none';fxSugList=[];return}
+ const scored=items.map(it=>({it,sc:fxMatch(q,it)})).filter(x=>x.sc>0).sort((a,b)=>b.sc-a.sc);fxSugList=scored.slice(0,12).map(x=>x.it);
+ const keep=new Set(scored.map(x=>x.it.row)),secs=new Set(scored.map(x=>x.it.secEl));
+ $$('[data-b="fx"] .sec').forEach(sec=>{const t=((sec.querySelector('.sech')||{}).textContent||'').toLowerCase();if(t.includes(q)){sec.classList.remove('closed');return}if(!secs.has(sec)){sec.classList.add('fxhide');return}sec.classList.remove('closed');sec.querySelectorAll('.row').forEach(r=>{if(!keep.has(r))r.classList.add('fxhide')})});
+ $$('[data-b="fx"] > .flexr').forEach(e=>e.classList.add('fxhide'));
+ fxSugIdx=0;renderFxSug(q)}
+function renderFxSug(q){const box=$('#fxSug');if(!fxSugList.length){box.innerHTML='<div style="cursor:default;color:var(--txt2)">No matching controls</div>';box.style.display='block';return}
+ const hl=t=>{const i=t.toLowerCase().indexOf(q);return i<0?esc(t):esc(t.slice(0,i))+'<b>'+esc(t.slice(i,i+q.length))+'</b>'+esc(t.slice(i+q.length))};
+ box.innerHTML=fxSugList.map((it,i)=>`<div data-i="${i}" class="${i===fxSugIdx?'on':''}">${hl(it.label)}<span>${esc(it.sec)}</span></div>`).join('');box.style.display='block'}
+function fxGo(it){if(!it)return;$('#fxQ').value='';fxFilter('');it.secEl.classList.remove('closed');it.row.scrollIntoView({block:'center',behavior:'smooth'});it.row.classList.remove('flash');void it.row.offsetWidth;it.row.classList.add('flash');
+ const ctl=it.row.querySelector('input:not([type=checkbox]),select,.scrub,input[type=checkbox]');setTimeout(()=>{if(ctl&&ctl.focus){ctl.focus()}},250)}
+$('#fxQ').addEventListener('input',e=>{const el=e.target;const typed=el.value;fxFilter(typed);
+ if(e.inputType&&e.inputType.startsWith('insert')&&fxSugList.length){const q=typed.toLowerCase(),top=fxSugList[0].label;if(q&&top.toLowerCase().startsWith(q)&&top.length>typed.length){el.value=typed+top.slice(typed.length);el.setSelectionRange(typed.length,top.length)}}});
+$('#fxQ').addEventListener('keydown',e=>{e.stopPropagation();const n=fxSugList.length;
+ if(e.key==='ArrowDown'&&n){e.preventDefault();fxSugIdx=(fxSugIdx+1)%n;renderFxSug($('#fxQ').value.slice(0,$('#fxQ').selectionStart).toLowerCase().trim())}
+ else if(e.key==='ArrowUp'&&n){e.preventDefault();fxSugIdx=(fxSugIdx-1+n)%n;renderFxSug($('#fxQ').value.slice(0,$('#fxQ').selectionStart).toLowerCase().trim())}
+ else if(e.key==='Tab'&&n){e.preventDefault();const el=$('#fxQ');el.value=fxSugList[fxSugIdx].label;el.setSelectionRange(el.value.length,el.value.length);fxFilter(el.value)}
+ else if(e.key==='Enter'){e.preventDefault();fxGo(fxSugList[fxSugIdx])}
+ else if(e.key==='Escape'){e.preventDefault();$('#fxQ').value='';fxFilter('');$('#fxQ').blur()}});
+$('#fxSug').addEventListener('mousedown',e=>{const d=e.target.closest('[data-i]');if(d){e.preventDefault();fxGo(fxSugList[+d.dataset.i])}});
+$('#fxQ').addEventListener('blur',()=>setTimeout(()=>{$('#fxSug').style.display='none'},120));
+$('#fxQ').addEventListener('focus',()=>{if($('#fxQ').value.trim())fxFilter($('#fxQ').value)});
+$('#fxQx').onclick=()=>{$('#fxQ').value='';fxFilter('');$('#fxQ').focus()};
 
 /* ---------- monitor: drag logo & countdown ---------- */
 function monPt(e){const r=mon.getBoundingClientRect();return {x:(e.clientX-r.left)*mon.width/r.width,y:(e.clientY-r.top)*mon.height/r.height,k:mon.width/r.width}}
