@@ -97,15 +97,24 @@ input[type=checkbox]{accent-color:var(--acc)}
 .tv{position:relative;display:flex;box-sizing:border-box;border-radius:calc(var(--u)*3.4);padding:calc(var(--u)*4.2) calc(var(--u)*4.2) calc(var(--u)*5);gap:calc(var(--u)*2.6);
  background:linear-gradient(180deg,rgba(255,220,180,.16),rgba(0,0,0,0) 12%,rgba(0,0,0,0) 85%,rgba(0,0,0,.35)),url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0035 0.09' numOctaves='5' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0.36  0 0 0 0 0.20  0 0 0 0 0.09  0 0 0 -1.6 1.25'/%3E%3C/filter%3E%3Crect width='600' height='300' fill='%23542c12'/%3E%3Crect width='600' height='300' filter='url(%23w)'/%3E%3C/svg%3E") 0 0/calc(var(--u)*60) calc(var(--u)*30),#4a2610;
  box-shadow:inset 0 calc(var(--u)*.25) 0 rgba(255,230,200,.28),inset 0 calc(var(--u)*-.6) calc(var(--u)*1.4) rgba(0,0,0,.6),inset calc(var(--u)*.4) 0 calc(var(--u)*.8) rgba(255,220,180,.08),0 calc(var(--u)*2.2) calc(var(--u)*4) rgba(0,0,0,.8),0 0 0 1px #1d0e04}
-#monwrap:not(.tvon) .tv{all:unset;display:block}#monwrap:not(.tvon) .tv>.trim,#monwrap:not(.tvon) .tv>.side,#monwrap:not(.tvon) .scan,#monwrap:not(.tvon) .glass{display:none}#monwrap:not(.tvon) .bezel,#monwrap:not(.tvon) .screen{all:unset;display:block;position:relative}
+#monwrap:not(.tvon) .tv{all:unset;display:block}#monwrap:not(.tvon) .tv>.trim,#monwrap:not(.tvon) .tv>.side,#monwrap:not(.tvon) .tv>.legs,#monwrap:not(.tvon) .tv>.floor,#monwrap:not(.tvon) .scan,#monwrap:not(.tvon) .glass{display:none}#monwrap:not(.tvon) .bezel,#monwrap:not(.tvon) .screen{all:unset;display:block;position:relative}
 .tv .trim{position:absolute;left:calc(var(--u)*2);right:calc(var(--u)*2);bottom:calc(var(--u)*1.9);height:calc(var(--u)*.45);border-radius:9px;background:linear-gradient(180deg,#f2f2f2,#8d8d8d 50%,#d9d9d9);box-shadow:0 1px 2px rgba(0,0,0,.6);opacity:.9}
-.tv .bezel{position:relative;padding:calc(var(--u)*2.2);border-radius:calc(var(--u)*2.4);background:linear-gradient(150deg,#3b3b3b,#151515 45%,#0c0c0c 70%,#262626);box-shadow:inset 0 0 0 1px #000,inset 0 calc(var(--u)*.3) calc(var(--u)*.6) rgba(255,255,255,.12),inset 0 calc(var(--u)*-.4) calc(var(--u)*.8) rgba(0,0,0,.8),0 calc(var(--u)*.2) 0 rgba(255,220,180,.15)}
-.tv .screen{position:relative;border-radius:7%/11%;overflow:hidden;background:#000;box-shadow:0 0 0 calc(var(--u)*.35) #050505,0 0 0 calc(var(--u)*.6) #1e1e1e}
-.tv .screen canvas{display:block;box-shadow:none!important;filter:saturate(1.1) contrast(1.06) brightness(1.03)}
-.tv .scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px);mix-blend-mode:multiply}
-.tv .glass{position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:radial-gradient(ellipse 70% 45% at 32% 10%,rgba(255,255,255,.17),transparent 60%),radial-gradient(ellipse at 50% 50%,transparent 58%,rgba(0,0,0,.6) 100%),linear-gradient(180deg,rgba(255,255,255,.05),transparent 30%);box-shadow:inset 0 0 calc(var(--u)*3) rgba(0,0,0,.85)}
-.tv .side{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:calc(var(--u)*2.4) 0 calc(var(--u)*2);border-radius:calc(var(--u)*1.2);
- background:repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 1px,rgba(0,0,0,.04) 1px 2px),linear-gradient(180deg,#e2dccd,#b9b09b 55%,#a49a83);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),inset 0 -2px 5px rgba(0,0,0,.3),0 0 0 1px rgba(0,0,0,.45)}
+.tv .bezel{position:relative;z-index:1;padding:calc(var(--u)*2.4);border-radius:calc(var(--u)*2.6);background:linear-gradient(160deg,#3a2f27,#1a1410 40%,#0e0b08 70%,#2a221b);box-shadow:inset 0 0 0 1px #000,inset 0 calc(var(--u)*.35) calc(var(--u)*.5) rgba(255,235,210,.12),inset 0 calc(var(--u)*-.5) calc(var(--u)*1) rgba(0,0,0,.85),0 0 0 calc(var(--u)*.45) #24180f,0 0 0 calc(var(--u)*.7) rgba(255,220,170,.18),0 calc(var(--u)*.4) calc(var(--u)*1) rgba(0,0,0,.6)}
+.tv .screen{position:relative;border-radius:8%/12%;overflow:hidden;background:#000;box-shadow:0 0 0 calc(var(--u)*.3) #030303,0 0 calc(var(--u)*1.2) rgba(0,0,0,.9)}
+.tv .screen canvas{display:block;box-shadow:none!important}
+.tv .scan{display:none}
+.tv::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(112deg,transparent 18%,rgba(255,240,220,.13) 32%,transparent 46%,transparent 62%,rgba(255,240,220,.07) 74%,transparent 86%);mix-blend-mode:screen}
+.tv::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 calc(var(--u)*5) rgba(0,0,0,.55),inset 0 calc(var(--u)*.35) 0 rgba(255,225,190,.25),inset 0 calc(var(--u)*-.5) 0 rgba(0,0,0,.45)}
+.tv .legs{position:absolute;left:9%;right:9%;bottom:calc(var(--u)*-4.2);height:calc(var(--u)*4.2);display:flex;justify-content:space-between;pointer-events:none}
+.tv .legs i{width:calc(var(--u)*2.6);height:100%;background:linear-gradient(90deg,#2a1608,#5b3519 45%,#24130a);clip-path:polygon(0 0,100% 0,78% 100%,22% 100%);position:relative}
+.tv .legs i::after{content:'';position:absolute;left:22%;right:22%;bottom:0;height:22%;background:linear-gradient(90deg,#8a6a2a,#e8cf8a,#8a6a2a)}
+.tv .floor{position:absolute;left:4%;right:4%;bottom:calc(var(--u)*-5.2);height:calc(var(--u)*2);border-radius:50%;background:radial-gradient(ellipse,rgba(0,0,0,.7),transparent 70%);pointer-events:none;z-index:-1}
+.tv .num{position:absolute;font:700 calc(var(--u)*.9)/1 'Source Sans 3',sans-serif;color:#3e321c;transform:translate(-50%,-50%);pointer-events:none}
+.tv .badge{width:46%;height:calc(var(--u)*1.6);border-radius:calc(var(--u)*.3);background:linear-gradient(180deg,#f3e6bd,#b89a55 55%,#8d723a);box-shadow:inset 0 1px 0 #fff8dc,0 1px 2px rgba(0,0,0,.5)}
+#monwrap:not(.tvon) .tv::before,#monwrap:not(.tvon) .tv::after{display:none}
+
+.tv .glass{position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:radial-gradient(ellipse 60% 38% at 30% 8%,rgba(255,255,255,.10),transparent 62%);box-shadow:inset 0 0 calc(var(--u)*2.2) rgba(0,0,0,.75),inset 0 calc(var(--u)*.25) calc(var(--u)*.3) rgba(255,255,255,.08)}
+.tv .side{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:calc(var(--u)*2.6) 0 calc(var(--u)*2.2);border-radius:calc(var(--u)*1.4);background:repeating-linear-gradient(180deg,rgba(255,255,255,.07) 0 1px,rgba(0,0,0,.05) 1px 2px),linear-gradient(90deg,#8f7a4c,#d6c08a 30%,#c3ab73 60%,#8a7448);box-shadow:inset 0 1px 0 rgba(255,250,220,.7),inset 0 -2px 5px rgba(0,0,0,.35),inset 1px 0 0 rgba(255,255,255,.3),0 0 0 calc(var(--u)*.35) #24180f,0 calc(var(--u)*.4) calc(var(--u)*1) rgba(0,0,0,.6)}
 .tv .screw{position:absolute;width:calc(var(--u)*.9);height:calc(var(--u)*.9);border-radius:50%;background:radial-gradient(circle at 35% 35%,#eee,#777);box-shadow:0 1px 1px rgba(0,0,0,.6)}
 .tv .screw::after{content:'';position:absolute;left:15%;right:15%;top:45%;height:12%;background:#555;transform:rotate(35deg)}
 .tv .kwrap{display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.7)}
@@ -114,8 +123,8 @@ input[type=checkbox]{accent-color:var(--acc)}
 .tv .knob .cap{position:absolute;inset:14%;border-radius:50%;background:radial-gradient(circle at 35% 28%,#f4f4f4,#b6b6b6 38%,#6e6e6e 75%,#4a4a4a);box-shadow:inset 0 -2px 3px rgba(0,0,0,.4),0 1px 2px rgba(0,0,0,.6)}
 .tv .knob .ptr{position:absolute;left:50%;top:6%;width:calc(var(--u)*.55);height:30%;margin-left:calc(var(--u)*-.275);border-radius:3px;background:#c4161c;box-shadow:0 0 2px rgba(0,0,0,.6)}
 .tv .ticks{position:absolute;inset:-22%;border-radius:50%;background:repeating-conic-gradient(from -135deg,#3d3527 0 1.5deg,transparent 1.5deg 27deg);-webkit-mask:radial-gradient(circle,transparent 66%,#000 67%,#000 72%,transparent 73%);mask:radial-gradient(circle,transparent 66%,#000 67%,#000 72%,transparent 73%);clip-path:polygon(50% 50%,0 100%,0 0,100% 0,100% 100%);pointer-events:none}
-.tv .lbl{font:700 calc(var(--u)*.95)/1 'Source Sans 3',sans-serif;letter-spacing:.22em;color:#4c4130;text-shadow:0 1px 0 rgba(255,255,255,.5)}
-.tv .grille{width:66%;height:calc(var(--u)*11);border-radius:calc(var(--u)*.8);background:radial-gradient(circle,#2b241a 38%,transparent 42%) 0 0/calc(var(--u)*1.25) calc(var(--u)*1.25),linear-gradient(180deg,#cfc6b2,#b4aa94);box-shadow:inset 0 1px 3px rgba(0,0,0,.5),0 1px 0 rgba(255,255,255,.6)}
+.tv .lbl{font:700 calc(var(--u)*.95)/1 'Source Sans 3',sans-serif;letter-spacing:.22em;color:#3e321c;text-shadow:0 1px 0 rgba(255,255,255,.5)}
+.tv .grille{width:72%;height:calc(var(--u)*13);border-radius:calc(var(--u)*.6);background:repeating-linear-gradient(0deg,rgba(0,0,0,.22) 0 1px,transparent 1px 3px),repeating-linear-gradient(90deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px),url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.20 0 0 0 0 0.17 0 0 0 0 0.13 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='120' height='120' fill='%237d7262'/%3E%3Crect width='120' height='120' filter='url(%23f)'/%3E%3C/svg%3E");box-shadow:inset 0 0 calc(var(--u)*.8) rgba(0,0,0,.6),0 0 0 calc(var(--u)*.3) #5e4d2c,0 1px 0 calc(var(--u)*.35) rgba(255,240,200,.5)}
 .tv .led{width:calc(var(--u)*.9);height:calc(var(--u)*.9);border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffb4b4,#e01616 60%);box-shadow:0 0 calc(var(--u)*1) #ff2a2a}
 .tv .vtip{position:absolute;right:110%;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.8);color:#fff;font:600 12px 'Source Sans 3';padding:3px 8px;border-radius:4px;white-space:nowrap;opacity:0;transition:opacity .2s;pointer-events:none}
 .tv .vtip.on{opacity:1}
@@ -334,14 +343,14 @@ input[type=checkbox]{accent-color:var(--acc)}
   </div>
   <!-- MONITOR -->
   <div class="panel" id="monitorP">
-   <div class="ptabs" id="monHead" style="align-items:center"><span class="on">Program: <span id="seqName">Sequence 01</span></span><span style="margin-left:auto;cursor:default;padding:0 8px" class="muted">1920 × 1080 · <span id="fpsLbl">30</span> fps</span><button class="mbtn" id="lockBtn" title="Lock 16:9 while resizing (Shift unlocks)" style="display:none"><i class="ti ti-aspect-ratio"></i></button><button class="mbtn" id="maxBtn" title="Maximize monitor (`)"><i class="ti ti-maximize"></i></button><button class="mbtn" id="floatBtn" title="Floating monitor (Shift+`)"><i class="ti ti-picture-in-picture-top"></i></button><button class="mbtn" id="popBtn" title="Open monitor in a separate window (second screen)"><i class="ti ti-window"></i></button></div>
+   <div class="ptabs" id="monHead" style="align-items:center"><span class="on">Program: <span id="seqName">Sequence 01</span></span><span style="margin-left:auto;cursor:default;padding:0 8px" class="muted">1920 × 1080 · <span id="fpsLbl">30</span> fps</span><button class="mbtn" id="lockBtn" title="Lock 16:9 while resizing (Shift unlocks)" style="display:none"><i class="ti ti-aspect-ratio"></i></button><button class="mbtn" id="tvBtn" title="Retro TV view on / off"><i class="ti ti-device-tv-old"></i></button><button class="mbtn" id="maxBtn" title="Maximize monitor (`)"><i class="ti ti-maximize"></i></button><button class="mbtn" id="floatBtn" title="Floating monitor (Shift+`)"><i class="ti ti-picture-in-picture-top"></i></button><button class="mbtn" id="popBtn" title="Open monitor in a separate window (second screen)"><i class="ti ti-window"></i></button></div>
    <span class="rz n" data-rz="n"></span><span class="rz s" data-rz="s"></span><span class="rz e" data-rz="e"></span><span class="rz w" data-rz="w"></span><span class="rz ne" data-rz="ne"></span><span class="rz nw" data-rz="nw"></span><span class="rz se" data-rz="se"></span><span class="rz sw" data-rz="sw"></span>
    <div class="pbody on" style="display:flex;flex-direction:column">
-    <div id="monwrap"><div class="tv" id="tv"><div class="trim"></div><div class="bezel"><div class="screen" id="tvScreen"><canvas id="mon" width="1280" height="720"></canvas><div class="scan"></div><div class="glass"></div><div id="safe"></div></div></div>
+    <div id="monwrap"><div class="tv" id="tv"><div class="trim"></div><div class="legs"><i></i><i></i></div><div class="floor"></div><div class="bezel"><div class="screen" id="tvScreen"><canvas id="mon" width="1280" height="720"></canvas><div class="scan"></div><div class="glass"></div><div id="safe"></div></div></div>
      <div class="side"><span class="screw" style="left:8%;top:2.5%"></span><span class="screw" style="right:8%;top:2.5%"></span><span class="screw" style="left:8%;bottom:2.5%"></span><span class="screw" style="right:8%;bottom:2.5%"></span>
       <div class="kwrap"><div class="knob" id="knobCh" title="Channel: switch background (drag or scroll)"><div class="ticks"></div><div class="cap"></div><div class="ptr"></div></div><div class="lbl">CHANNEL</div></div>
       <div class="kwrap"><div class="knob" id="knobVol" title="Volume (drag or scroll · double-click = 100%)"><div class="ticks"></div><div class="cap"></div><div class="ptr"></div><div class="vtip" id="volTip">Volume 100%</div></div><div class="lbl">VOLUME</div></div>
-      <div class="grille"></div><div class="led" id="tvLed"></div></div></div></div>
+      <div class="grille"></div><div class="badge"></div><div class="led" id="tvLed"></div></div></div></div>
     <div id="syncstrip"><span class="muted small">Sync preview, the next word to tap is outlined in red.</span></div>
     <div id="transport">
      <span id="tc">00:00:00:00</span>
@@ -774,7 +783,7 @@ function buildClipSec(){const box=$('#clipSec');if(S.sel<0||!S.flat[S.sel]){box.
 const mon=$('#mon'),mctx=mon.getContext('2d');
 function fitMonitor(){const w=$('#monwrap');const W=w.clientWidth-8,H=w.clientHeight-8;if(W<10||H<10)return;const tv=S.tvOn!==false;w.classList.toggle('tvon',tv);let cw,ch;
  if(tv){// cabinet = 2.4u pad, bezel 2.2u pad, side panel 15u, gap 2u; screen width = 100u (u = unit)
-  const uW=W/(4.2*2+2.2*2+100+2.6+15),uH=H/(4.2+5+2.2*2+56.25);const u=Math.max(2,Math.min(uW,uH));cw=100*u;ch=cw*9/16;w.style.setProperty('--u',u+'px');$('#tv').style.setProperty('--u',u+'px');
+  const uW=W/(4.2*2+2.4*2+100+2.6+15),uH=H/(4.2+5+2.4*2+56.25+5.5);const u=Math.max(2,Math.min(uW,uH));cw=100*u;$('#tv').style.marginBottom=5*u+'px';ch=cw*9/16;w.style.setProperty('--u',u+'px');$('#tv').style.setProperty('--u',u+'px');
   $('#tv').querySelector('.side').style.width=15*u+'px'}
  else{cw=W;ch=W*9/16;if(ch>H){ch=H;cw=H*16/9}}
  mon.style.width=cw+'px';mon.style.height=ch+'px';
@@ -1046,7 +1055,7 @@ function act(a){switch(a){
  case 'autosync':openAutoSync();break;case 'selectLow':jumpLow();break;
  case 'arm':setArmed(!S.armed);break;case 'rate75':$('#rate').value='0.75';$('#rate').onchange();break;case 'rate100':$('#rate').value='1';$('#rate').onchange();break;
  case 'maxmon':toggleMax();break;case 'floatmon':toggleFloat();break;case 'popmon':openPopup();break;
- case 'tvToggle':S.tvOn=!(S.tvOn!==false);try{localStorage.setItem('kl_tv',S.tvOn?'1':'0')}catch(e){}onResize();break;
+ case 'tvToggle':S.tvOn=!(S.tvOn!==false);try{localStorage.setItem('kl_tv',S.tvOn?'1':'0')}catch(e){}$('#tvBtn').classList.toggle('on',S.tvOn);onResize();break;
  case 'safe':S.safe=!S.safe;fitMonitor();break;case 'resetLayout':$('#app').style.gridTemplateRows='';onResize();break;
  case 'keys':showKeys();break;case 'checkUpd':if(DESKTOP){toast('Checking for updates…');ksDesktop.checkUpdates()}else toast('Updates are available in the desktop version');break;
  case 'about':modal(`<h3>Karaoke Lab${DESKTOP?' '+ksDesktop.version:''}</h3><p class="muted">Karaoke subtitle editor with tap sync, timeline editing, animated backgrounds and Full HD rendering.</p><p class="muted">AD SOUND &amp; SERVICE</p><div style="text-align:right"><button onclick="closeModal()">Close</button></div>`);break;
@@ -1492,9 +1501,11 @@ function knobDrag(el,get,set){el.addEventListener('pointerdown',e=>{e.preventDef
   const mv=ev=>{const a=Math.atan2(ev.clientY-cy,ev.clientX-cx);let da=a-a0;if(da>Math.PI)da-=2*Math.PI;if(da<-Math.PI)da+=2*Math.PI;a0=a;const dv=da/(Math.PI*1.5)+(y0-ev.clientY)*0;set(get()+dv)};
   const up=()=>{el.style.cursor='';el.removeEventListener('pointermove',mv);el.removeEventListener('pointerup',up)};el.addEventListener('pointermove',mv);el.addEventListener('pointerup',up)});
  el.addEventListener('wheel',e=>{e.preventDefault();set(get()+(e.deltaY<0?0.05:-0.05))},{passive:false})}
+$('#tvBtn').onclick=()=>act('tvToggle');$('#tvBtn').classList.toggle('on',S.tvOn!==false);
 knobDrag($('#knobVol'),()=>S.vol,v=>setVol(v,true));$('#knobVol').addEventListener('dblclick',()=>setVol(1,true));
 S.chIdx=0;let chAcc=0;knobDrag($('#knobCh'),()=>chAcc,v=>{const step=Math.round(v*8)-Math.round(chAcc*8);chAcc=v;if(step){const ids=BG_PRESETS.map(p=>p.id).filter(id=>!['image','video'].includes(id)||(id==='image'&&S.imgEl)||(id==='video'&&vid.src));let i=ids.indexOf(P.bg.type);i=(i+step+ids.length*10)%ids.length;P.bg.type=ids[i];markThumb();buildBgCtl();bump();toast('Channel: '+BG_PRESETS.find(p=>p.id===P.bg.type).name,900)}setKnob($('#knobCh'),((chAcc%1)+1)%1)});
 requestAnimationFrame(()=>{setVol(S.vol,false);setKnob($('#knobCh'),0)});
+(function(){const ring=(k,arr)=>{arr.forEach((n,i)=>{const a=(-135+i*270/(arr.length-1))*Math.PI/180;const sp=document.createElement('span');sp.className='num';sp.textContent=n;sp.style.left=(50+Math.sin(a)*68)+'%';sp.style.top=(50-Math.cos(a)*68)+'%';k.appendChild(sp)});k.querySelectorAll('.ticks').forEach(t=>t.remove())};ring($('#knobCh'),[2,3,4,5,6,7,8,9,10,11,12,13]);ring($('#knobVol'),[0,1,2,3,4,5,6,7,8,9,10])})();
 
 /* ---------- monitor: drag logo & countdown ---------- */
 function monPt(e){const r=mon.getBoundingClientRect();return {x:(e.clientX-r.left)*mon.width/r.width,y:(e.clientY-r.top)*mon.height/r.height,k:mon.width/r.width}}
