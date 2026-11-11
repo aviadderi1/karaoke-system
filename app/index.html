@@ -408,7 +408,7 @@ input[type=checkbox]{accent-color:var(--acc)}
  <div class="muted small" style="margin-bottom:5px" id="weTitle">Edit word</div>
  <div class="flexr"><input type="text" id="weIn" style="flex:1;min-width:0;font-size:14px"><button class="pri" id="weSave"><i class="ti ti-check"></i>Save</button></div>
  <div class="muted small" style="margin-top:5px">Enter saves · Esc cancels · a space splits it into two words</div>
- <div class="flexr" style="margin-top:9px;flex-wrap:wrap"><button class="del" id="weDel"><i class="ti ti-trash"></i>Delete word</button><button id="weJoin"><i class="ti ti-arrow-merge-left"></i>Join with previous</button><button id="weColor"><i class="ti ti-palette"></i>Color…</button></div>
+ <div class="flexr" style="margin-top:9px;flex-wrap:wrap"><button class="del" id="weDel"><i class="ti ti-trash"></i>Delete word</button><button class="del" id="weDelLine"><i class="ti ti-row-remove"></i>Delete whole line</button><button id="weJoin"><i class="ti ti-arrow-merge-left"></i>Join with previous</button><button id="weColor"><i class="ti ti-palette"></i>Color…</button></div>
 </div>
 <div id="ctxMenu"><div data-c="color">Word color…</div><div data-c="text">Edit text…</div><div data-c="play">Play this line</div><div data-c="clear">Clear timing</div></div>
 <audio id="aud" preload="auto"></audio>
@@ -1350,6 +1350,9 @@ function weDelete(){const gi=WE.gi,f=S.flat[gi];if(!f)return closeWe();pushUndo(
 function weJoin(){const gi=WE.gi,f=S.flat[gi];if(!f||f.ti<1)return;pushUndo();const k=f.tok,line=P.lines[f.li],prev=line[f.ti-1];
  const val=$('#weIn').value.trim();prev.t=prev.t+(val&&!/\s/.test(val)?val:k.t);prev.j=k.j;if(k.e!=null)prev.e=k.e;else if(prev.s==null&&k.s!=null){prev.s=k.s;prev.e=k.e}
  line.splice(f.ti,1);if(S.syncIdx>gi)S.syncIdx--;afterWordEdit(`Joined into "${prev.t}"`)}
+function weDeleteLine(){const gi=WE.gi,f=S.flat[gi];if(!f)return closeWe();pushUndo();const li=f.li,txt=P.lines[li].map(k=>k.t+(k.j?'':' ')).join('').trim();const first=S.flat.findIndex(x=>x.li===li),cnt=P.lines[li].length;
+ P.lines.splice(li,1);if(S.syncIdx>first)S.syncIdx=Math.max(first,S.syncIdx-cnt);afterWordEdit(`Deleted line "${txt.length>40?txt.slice(0,40)+'…':txt}"`)}
+$('#weDelLine').onclick=weDeleteLine;
 $('#weSave').onclick=weSave;$('#weDel').onclick=weDelete;$('#weJoin').onclick=weJoin;
 $('#weColor').onclick=()=>{const gi=WE.gi,r=$('#wePop').getBoundingClientRect();closeWe();openWordColor(gi,r.left+r.width/2,r.top+20)};
 $('#weIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();weSave()}else if(e.key==='Escape'){e.preventDefault();closeWe()}e.stopPropagation()});
