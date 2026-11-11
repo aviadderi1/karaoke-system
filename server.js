@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const { spawn } = require('child_process');
 
 const MODELS = { htdemucs_ft: 4, htdemucs: 1 };
-const MIME = { '.html': 'text/html; charset=utf-8', '.m4a': 'audio/mp4', '.mp4': 'audio/mp4', '.webm': 'audio/webm',
+const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.woff2': 'font/woff2', '.m4a': 'audio/mp4', '.mp4': 'audio/mp4', '.webm': 'audio/webm',
   '.opus': 'audio/ogg', '.ogg': 'audio/ogg', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.png': 'image/png' };
 
 function createServer(opts) {
@@ -105,6 +105,7 @@ function createServer(opts) {
       if (u.pathname.startsWith('/job/')) return send(res, 200, jobs.get(u.pathname.slice(5)) || { state: 'missing', msg: 'Unknown job' });
       if (u.pathname.startsWith('/file/')) return sendFile(res, path.join(workDir, path.basename(decodeURIComponent(u.pathname.slice(6)))));
       if (u.pathname.startsWith('/assets/')) return sendFile(res, path.join(appDir, path.basename(u.pathname)));
+      if (u.pathname.startsWith('/fonts/')) return sendFile(res, path.join(appDir, 'fonts', path.basename(decodeURIComponent(u.pathname))));
       return send(res, 404, { error: 'not found' });
     }
     if (req.method === 'POST') {
