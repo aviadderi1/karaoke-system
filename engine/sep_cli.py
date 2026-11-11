@@ -50,6 +50,10 @@ def main():
     a = ap.parse_args()
 
     import numpy as np
+    try:  # model checkpoints pickle numpy.core.multiarray; make sure the bundler includes it
+        import numpy.core.multiarray  # noqa: F401
+    except Exception:
+        pass
     import soundfile as sf
     import torch
     from demucs.pretrained import get_model
