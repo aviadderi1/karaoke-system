@@ -208,7 +208,8 @@ input[type=checkbox]{accent-color:var(--acc)}
   </div></div>
   <div class="menu"><span>Lyrics</span><div class="drop">
    <div data-a="wsLyrics">Edit lyrics</div>
-   <div data-a="search">Find lyrics online</div><hr>
+   <div data-a="search">Find lyrics online</div>
+   <div data-a="webLyrics">Search the web for lyrics…</div><hr>
    <div data-a="autoSpread">Auto-time words inside timed lines</div>
   </div></div>
   <div class="menu"><span>Sync</span><div class="drop">
@@ -257,7 +258,8 @@ input[type=checkbox]{accent-color:var(--acc)}
    <div class="ptabs"><span data-t="lyrics" class="on">Lyrics</span><span data-t="fx">Effect controls</span><span data-t="media">Media</span></div>
    <div class="pbody on" data-b="lyrics">
     <div class="grid2"><input type="text" id="artist" placeholder="Artist"><input type="text" id="title" placeholder="Song title"></div>
-    <div class="flexr" style="margin-top:6px"><button class="pri" id="searchBtn"><i class="ti ti-world-search"></i>Find lyrics</button><button id="impLyrBtn"><i class="ti ti-file-import"></i>Import .lrc / .txt</button><span class="muted small" id="searchState"></span></div>
+    <div class="flexr" style="margin-top:6px"><button class="pri" id="searchBtn"><i class="ti ti-search"></i>Find lyrics</button><button id="webBtn" title="Open a built-in browser with the search ready; select the lyrics and send them here"><i class="ti ti-world-search"></i>Search the web</button><button id="impLyrBtn" title="Import .lrc / .txt"><i class="ti ti-file-import"></i></button></div>
+    <div class="small muted" id="searchState" style="margin-top:4px;min-height:14px"></div>
     <div class="results" id="results"></div>
     <div class="flexr" style="margin:8px 0 4px;justify-content:space-between"><span class="lbl" style="margin:0">One line = one subtitle · split syllables with /</span><span class="small muted" id="lyrStats"></span></div>
     <textarea id="lyr" spellcheck="false" placeholder="Paste or type the lyrics here.&#10;&#10;Here comes the mor/ning&#10;light over the city"></textarea>
@@ -800,13 +802,32 @@ function tapUp(){if(S.holding==null)return;const k=S.flat[S.holding].tok;k.e=Mat
 function tapBack(){if(S.syncIdx<=0)return;pushUndo();S.syncIdx--;const k=S.flat[S.syncIdx].tok;const back=(k.s!=null?k.s:curT())-2.5;k.s=null;k.e=null;seek(Math.max(0,back));bump();updateStatus()}
 
 /* ---------- lyrics search ---------- */
-async function searchLyrics(){const a=$('#artist').value.trim(),t=$('#title').value.trim();if(!a&&!t)return toast('Type an artist and/or song title');const st=$('#searchState');st.textContent='Searching…';const box=$('#results');box.innerHTML='';box.style.display='none';
- let res=[];try{const u=new URL('https://lrclib.net/api/search');if(t)u.searchParams.set('track_name',t);if(a)u.searchParams.set('artist_name',a);let r=await fetch(u);res=await r.json();
-  if(!res.length){const u2=new URL('https://lrclib.net/api/search');u2.searchParams.set('q',(a+' '+t).trim());r=await fetch(u2);res=await r.json()}}catch(e){console.warn(e)}
- if(!res.length){try{const r=await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(a)}/${encodeURIComponent(t)}`);const j=await r.json();if(j.lyrics)res=[{trackName:t,artistName:a,plainLyrics:j.lyrics,src:'lyrics.ovh'}]}catch(e){}}
- st.textContent=res.length?`${res.length} result${res.length>1?'s':''}`:'No lyrics found. Try another spelling, or paste them in.';if(!res.length)return;
- box.style.display='block';res.slice(0,25).forEach(r=>{const d=document.createElement('div');const du=r.duration?tc(r.duration).slice(3,8):'';d.innerHTML=`<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span style="color:#fff">${esc(r.trackName||'')}</span> <span class="muted">· ${esc(r.artistName||'')}</span></span>${r.syncedLyrics?'<span class="badge g">synced</span>':''}<span class="badge">${du||r.src||'text'}</span>`;
+function cleanName(x){return String(x||'').replace(/\s*[\(\[][^\)\]]*[\)\]]/g,'').replace(/\b(official|music|video|audio|lyrics?|clip|hd|4k|remaster(ed)?|live)\b/gi,'').replace(/\s+(feat\.?|ft\.?|featuring)\s+.*$/i,'').replace(/קליפ|רשמי|מילים/g,'').replace(/[|_]+/g,' ').replace(/\s{2,}/g,' ').trim().replace(/^[-–\s]+|[-–\s]+$/g,'')}
+async function getJSON(url,ms=9000){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);try{const r=await fetch(url,{signal:c.signal});if(!r.ok)return null;return await r.json()}catch(e){return null}finally{clearTimeout(t)}}
+async function searchLyrics(){let a=$('#artist').value.trim(),t=$('#title').value.trim();if(!a&&!t){a=P.artist||'';t=P.title||''}if(!a&&!t)return toast('Type an artist and/or song title');
+ const st=$('#searchState');const box=$('#results');box.innerHTML='';box.style.display='none';$('#searchBtn').disabled=true;
+ const ca=cleanName(a),ct=cleanName(t);let tt=ct,aa=ca;if(!aa&&/\s[-–]\s/.test(tt)){[aa,tt]=tt.split(/\s[-–]\s(.*)/s).map(x=>x.trim())}
+ const lr=(o)=>{const u=new URL('https://lrclib.net/api/search');Object.entries(o).forEach(([k,v])=>v&&u.searchParams.set(k,v));return u.toString()};
+ const tasks=[];const add=(u,src)=>tasks.push({u,src});
+ if(tt&&aa)add(lr({track_name:tt,artist_name:aa}),'LRCLIB');
+ if(tt)add(lr({track_name:tt}),'LRCLIB');
+ if(tt&&aa)add(lr({track_name:aa,artist_name:tt}),'LRCLIB');
+ add(lr({q:`${aa} ${tt}`.trim()}),'LRCLIB');if(t!==tt||a!==aa)add(lr({q:`${a} ${t}`.trim()}),'LRCLIB');
+ if(tt&&aa){add(`https://api.lyrics.ovh/v1/${encodeURIComponent(aa)}/${encodeURIComponent(tt)}`,'lyrics.ovh');add(`https://api.lyrics.ovh/v1/${encodeURIComponent(tt)}/${encodeURIComponent(aa)}`,'lyrics.ovh')}
+ st.textContent=`Searching ${tasks.length} variations…`;
+ const out=await Promise.all(tasks.map(async x=>{const j=await getJSON(x.u);if(!j)return[];if(x.src==='lyrics.ovh')return j.lyrics?[{trackName:tt,artistName:aa,plainLyrics:j.lyrics,src:'lyrics.ovh'}]:[];return (Array.isArray(j)?j:[]).filter(r=>r.plainLyrics||r.syncedLyrics).map(r=>({...r,src:'LRCLIB'}))}));
+ const seen=new Set(),res=[];out.flat().forEach(r=>{const k=r.id?'id'+r.id:(r.src+normW(r.trackName)+normW(r.artistName)+(r.plainLyrics||'').length);if(seen.has(k))return;seen.add(k);res.push(r)});
+ const nt=normW(tt),na=normW(aa);const score=r=>(normW(r.trackName)===nt?4:simW(normW(r.trackName),nt)>0.7?2:0)+(na&&(normW(r.artistName).includes(na)||na.includes(normW(r.artistName)))?3:0)+(r.syncedLyrics?1:0);
+ res.sort((x,y)=>score(y)-score(x));$('#searchBtn').disabled=false;
+ if(!res.length){st.innerHTML=`No lyrics found in the open databases. <a href="#" id="tryWeb" style="color:var(--acc)">Search the web</a>`;$('#tryWeb').onclick=e=>{e.preventDefault();webLyrics()};return}
+ st.textContent=`${res.length} result${res.length>1?'s':''}. Click one to load it, or use Search the web.`;
+ box.style.display='block';res.slice(0,30).forEach(r=>{const d=document.createElement('div');const du=r.duration?tc(r.duration).slice(3,8):'';d.innerHTML=`<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span style="color:#fff">${esc(r.trackName||'')}</span> <span class="muted">· ${esc(r.artistName||'')}</span></span>${r.syncedLyrics?'<span class="badge g">synced</span>':''}${du?`<span class="badge">${du}</span>`:''}<span class="badge">${r.src}</span>`;
   d.onclick=()=>pickLyrics(r);box.appendChild(d)})}
+function webLyrics(){const a=$('#artist').value.trim()||P.artist||'',t=$('#title').value.trim()||P.title||'';const q=`${cleanName(a)} ${cleanName(t)} ${isRTLText(a+t)?'מילים':'lyrics'}`.trim();
+ if(window.ksDesktop&&ksDesktop.openLyricsWeb)ksDesktop.openLyricsWeb(q);else{window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank');toast('Copy the lyrics from the site and paste them into the lyrics box',5000)}}
+function cleanLyrics(txt){return String(txt).replace(/\r/g,'').split('\n').map(l=>l.replace(/ /g,' ').replace(/\s+/g,' ').trim()).filter(l=>!/^\[[^\]]*\]$/.test(l)&&!/^\d+\s*(contributors?|embed)$/i.test(l)&&!/^(embed|you might also like|translations?|see .* live|get tickets.*|lyrics)$/i.test(l)&&!/https?:\/\//.test(l)&&!/^\d+$/.test(l)&&!/^.{0,60}\blyrics\b$/i.test(l)).join('\n').replace(/\n{3,}/g,'\n\n').trim()}
+function receiveLyrics(raw){const txt=cleanLyrics(raw);if(!txt)return toast('No text came through. Select the lyrics first.');pushUndo();$('#lyr').value=txt;applyText(txt,false);workspace('lyrics');drawTL();toast(`Lyrics added from the web: ${P.lines.length} lines. Ctrl+Z to undo.`,4000)}
+if(window.ksDesktop&&ksDesktop.onLyricsText)ksDesktop.onLyricsText(receiveLyrics);
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function pickLyrics(r){$('#results').style.display='none';pushUndo();
  if(r.syncedLyrics){const use=confirm('These lyrics come with line timing.\n\nOK = use the line timing (words are spread inside each line, then you fine-tune)\nCancel = text only');if(use){importLRC(r.syncedLyrics);finishPick(r);return}}
@@ -904,7 +925,7 @@ function act(a){switch(a){
  case 'zoomIn':setZoom(S.pps*1.5);break;case 'zoomOut':setZoom(S.pps/1.5);break;case 'zoomFit':zoomFit();break;
  case 'goStart':seek(0);S.scroll=0;break;case 'goEnd':seek(totalDur());break;
  case 'frameBack':pause();seek(curT()-1/30);break;case 'frameFwd':pause();seek(curT()+1/30);break;
- case 'wsLyrics':workspace('lyrics');break;case 'search':workspace('lyrics');searchLyrics();break;case 'autoSpread':autoSpread();break;
+ case 'wsLyrics':workspace('lyrics');break;case 'search':workspace('lyrics');searchLyrics();break;case 'webLyrics':workspace('lyrics');webLyrics();break;case 'autoSpread':autoSpread();break;
  case 'markIn':S.inP=curT();if(S.outP!=null&&S.outP<=S.inP)S.outP=null;updSel();break;case 'markOut':S.outP=curT();if(S.inP!=null&&S.inP>=S.outP)S.inP=null;updSel();break;case 'clearIO':S.inP=S.outP=null;updSel();break;
  case 'aTrim':audioOp('trim');break;case 'aDelete':audioOp('delete');break;case 'aSilence':audioOp('silence');break;case 'aFadeIn':audioOp('fadein');break;case 'aFadeOut':audioOp('fadeout');break;case 'aGain':audioOp('gain');break;case 'aNorm':audioOp('norm');break;
  case 'aExportWav':exportAudio('wav');break;case 'vExportWav':exportAudio('wav','vocal');break;case 'unsep':unseparate();break;case 'sepMenu':workspace('import');separateVocals();break;case 'ytImport':workspace('import');$('#ytUrl').focus();break;case 'aExportMp3':exportAudio('mp3');break;
@@ -933,7 +954,7 @@ function updateStatus(){const names={select:'Selection tool',ripple:'Track selec
 let lyrT;$('#lyr').addEventListener('input',()=>{clearTimeout(lyrT);lyrT=setTimeout(()=>{pushUndo();applyText($('#lyr').value,true);drawTL()},450)});
 $('#artist').oninput=e=>{P.artist=e.target.value;updateName();bump()};$('#title').oninput=e=>{P.title=e.target.value;updateName();bump()};
 $('#artist').onkeydown=$('#title').onkeydown=e=>{if(e.key==='Enter')searchLyrics()};
-$('#searchBtn').onclick=searchLyrics;$('#impLyrBtn').onclick=()=>$('#fLyr').click();$('#spreadBtn').onclick=autoSpread;$('#toSync').onclick=()=>{workspace('sync');if(master()){seek(0);setArmed(true)}};
+$('#searchBtn').onclick=searchLyrics;$('#webBtn').onclick=webLyrics;$('#impLyrBtn').onclick=()=>$('#fLyr').click();$('#spreadBtn').onclick=autoSpread;$('#toSync').onclick=()=>{workspace('sync');if(master()){seek(0);setArmed(true)}};
 function updateName(){$('#projname').textContent=(P.artist||P.title)?`${P.artist}${P.artist&&P.title?' – ':''}${P.title}`:'Untitled';$('#seqName').textContent=P.title||'Sequence 01'}
 $('#audioSrc').onchange=e=>{P.audioSource=e.target.value;routeAudio();save();toast(P.audioSource==='video'?'Using the video audio':'Using the song file')};
 $('#saveDef').onclick=()=>{localStorage.setItem('ks_defstyle',JSON.stringify(P.style));toast('Saved as default style for new songs')};

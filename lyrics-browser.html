@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Find lyrics on the web · Karaoke System</title>
+<style>
+html,body{margin:0;background:#1d1d1d;font-family:'Segoe UI',-apple-system,'Helvetica Neue',Arial,sans-serif;font-size:12.5px;color:#ddd;overflow:hidden}
+#bar{height:46px;display:flex;align-items:center;gap:6px;padding:0 8px;border-bottom:1px solid #313131;box-sizing:border-box;background:#232323}
+button{background:#2a2a2a;border:1px solid #3d3d3d;border-radius:3px;color:#ececec;height:28px;padding:0 10px;cursor:pointer;font:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+button:hover{background:#333}button.pri{background:#2d8ceb;border-color:#2d8ceb;color:#fff}button.pri:hover{background:#3d98f0}
+button.ic{width:30px;padding:0;justify-content:center;font-size:15px}
+input{flex:1;min-width:120px;height:28px;background:#151515;border:1px solid #3d3d3d;border-radius:3px;color:#eee;padding:0 8px;font:inherit;outline:none}
+input:focus{border-color:#2d8ceb}
+#msg{position:fixed;right:10px;top:52px;background:#2b2b2b;border:1px solid #3d3d3d;border-radius:4px;padding:6px 12px;opacity:0;transition:opacity .2s;pointer-events:none}
+#msg.on{opacity:1}
+</style></head>
+<body>
+<div id="bar">
+ <button class="ic" id="back" title="Back">&#8592;</button>
+ <button class="ic" id="fwd" title="Forward">&#8594;</button>
+ <button class="ic" id="rel" title="Reload">&#8635;</button>
+ <input id="url" placeholder="Search or type an address" spellcheck="false">
+ <button class="pri" id="sel" title="Select the lyrics on the page with the mouse, then click">&#8678; Use selected text as lyrics</button>
+ <button id="page" title="Send all text on the page (you can clean it up in the lyrics box)">Use whole page text</button>
+</div>
+<div id="msg"></div>
+<script>
+const $=id=>document.getElementById(id),msg=t=>{const m=$('msg');m.textContent=t;m.classList.add('on');clearTimeout(msg.t);msg.t=setTimeout(()=>m.classList.remove('on'),2600)};
+$('back').onclick=()=>lw.action('back');$('fwd').onclick=()=>lw.action('forward');$('rel').onclick=()=>lw.action('reload');
+$('url').onkeydown=e=>{if(e.key==='Enter'){lw.action('go',$('url').value.trim());$('url').blur()}};
+$('sel').onclick=async()=>{const r=await lw.action('take','selection');msg(r&&r.ok?`Sent ${r.lines} lines to Karaoke System`:'Select the lyrics on the page first (drag with the mouse)')};
+$('page').onclick=async()=>{const r=await lw.action('take','page');msg(r&&r.ok?`Sent ${r.lines} lines. Remove the extra text in the lyrics box.`:'The page has no text')};
+lw.onUrl(u=>{if(document.activeElement!==$('url'))$('url').value=u});
+</script></body></html>

@@ -1,6 +1,6 @@
 // Karaoke System - AD SOUND & SERVICE
 'use strict';
-const { app, BrowserWindow, ipcMain, shell, Menu, dialog } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain, shell, Menu, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
@@ -22,6 +22,47 @@ ipcMain.on('ks:version', e => { e.returnValue = app.getVersion(); });
 ipcMain.handle('ks:open-external', (_e, url) => { if (/^https?:\/\//.test(url)) shell.openExternal(url); });
 ipcMain.handle('ks:check-updates', () => checkUpdates(true));
 ipcMain.handle('ks:install-update', () => installUpdate());
+
+// ------------------------------------------------------------ lyrics web browser
+let lw = null, lv = null;
+const BAR_H = 46;
+function lwUrlFor(q) { q = String(q || '').trim(); if (/^https?:\/\//i.test(q)) return q; if (/^[\w-]+(\.[\w-]+)+(\/.*)?$/.test(q)) return 'https://' + q; return 'https://www.google.com/search?q=' + encodeURIComponent(q); }
+function openLyricsWeb(q) {
+  const url = lwUrlFor(q);
+  if (lw && !lw.isDestroyed()) { lv.webContents.loadURL(url); lw.show(); lw.focus(); return; }
+  lw = new BrowserWindow({ width: 1150, height: 820, title: 'Find lyrics on the web · Karaoke System', backgroundColor: '#1d1d1d', autoHideMenuBar: true,
+    icon: path.join(__dirname, 'build', 'icon.png'), webPreferences: { preload: path.join(__dirname, 'lyrics-preload.js'), contextIsolation: true } });
+  lw.loadFile(path.join(__dirname, 'lyrics-browser.html'));
+  lv = new WebContentsView({ webPreferences: { contextIsolation: true, sandbox: true } });
+  lw.contentView.addChildView(lv);
+  const layout = () => { if (!lw || lw.isDestroyed()) return; const [w, h] = lw.getContentSize(); lv.setBounds({ x: 0, y: BAR_H, width: w, height: Math.max(0, h - BAR_H) }); };
+  layout(); lw.on('resize', layout);
+  const wc = lv.webContents;
+  wc.setWindowOpenHandler(({ url }) => { if (/^https?:/.test(url)) wc.loadURL(url); return { action: 'deny' }; });
+  const sendUrl = () => { if (lw && !lw.isDestroyed()) lw.webContents.send('ks:lw-url', wc.getURL()); };
+  wc.on('did-navigate', sendUrl); wc.on('did-navigate-in-page', sendUrl);
+  lw.webContents.once('did-finish-load', sendUrl);
+  lw.on('closed', () => { lw = null; lv = null; });
+  wc.loadURL(url);
+}
+ipcMain.handle('ks:lyrics-web', (_e, q) => openLyricsWeb(q));
+ipcMain.handle('ks:lw-action', async (_e, act, arg) => {
+  if (!lv || lv.webContents.isDestroyed()) return { ok: false };
+  const wc = lv.webContents, nh = wc.navigationHistory;
+  if (act === 'back') { if (nh ? nh.canGoBack() : wc.canGoBack()) nh ? nh.goBack() : wc.goBack(); return { ok: true }; }
+  if (act === 'forward') { if (nh ? nh.canGoForward() : wc.canGoForward()) nh ? nh.goForward() : wc.goForward(); return { ok: true }; }
+  if (act === 'reload') { wc.reload(); return { ok: true }; }
+  if (act === 'go') { if (arg) wc.loadURL(lwUrlFor(arg)); return { ok: true }; }
+  if (act === 'take') {
+    let text = '';
+    try { text = await wc.executeJavaScript(arg === 'page' ? 'document.body ? document.body.innerText : ""' : 'String(window.getSelection ? window.getSelection() : "")', true); } catch (e) { }
+    text = String(text || '').trim();
+    if (!text) return { ok: false };
+    if (mainWin && !mainWin.isDestroyed()) { mainWin.webContents.send('ks:lyrics-text', text); }
+    return { ok: true, lines: text.split(/\n/).filter(l => l.trim()).length };
+  }
+  return { ok: false };
+});
 
 // ------------------------------------------------------------ tools
 function prepareYtdlp() {

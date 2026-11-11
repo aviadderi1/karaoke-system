@@ -1,7 +1,7 @@
 {
   "name": "karaoke-system",
   "productName": "Karaoke System",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Karaoke subtitle studio with YouTube import and vocal removal.",
   "author": "AD SOUND & SERVICE",
   "license": "UNLICENSED",
@@ -24,7 +24,7 @@
     "productName": "Karaoke System",
     "copyright": "© AD SOUND & SERVICE",
     "directories": { "output": "dist", "buildResources": "build" },
-    "files": ["main.js", "server.js", "preload.js", "splash.html", "app/**", "build/icon.png", "package.json"],
+    "files": ["main.js", "server.js", "preload.js", "lyrics-preload.js", "lyrics-browser.html", "splash.html", "app/**", "build/icon.png", "package.json"],
     "extraResources": [
       { "from": "resources/bin", "to": "bin", "filter": ["**/*"] },
       { "from": "resources/engine", "to": "engine", "filter": ["**/*"] },
