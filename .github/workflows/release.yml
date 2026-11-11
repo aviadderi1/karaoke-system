@@ -139,7 +139,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           shopt -s nullglob
-          FILES=(dist/*.exe dist/*.exe.blockmap dist/latest.yml dist/*.dmg)
+          FILES=(dist/*.exe dist/*.exe.blockmap dist/*.dmg)
+          if [ -f dist/latest.yml ]; then FILES+=(dist/latest.yml); fi
           echo "Uploading: ${FILES[@]}"
           gh release upload "$TAG" "${FILES[@]}" --clobber -R "$GITHUB_REPOSITORY"
 
