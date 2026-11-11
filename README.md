@@ -25,5 +25,5 @@ The app checks for new versions on start (and Help → Check for updates). Windo
 ## Releasing a new version (maintainer)
 
 1. Bump `version` in `package.json`.
-2. Commit, then tag and push: `git tag v1.0.1 && git push origin main --tags`.
+2. Commit and push to main. The new version number starts the build automatically.
 3. GitHub Actions builds Windows and both Mac versions and publishes the release.

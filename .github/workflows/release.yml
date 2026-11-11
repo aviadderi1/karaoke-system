@@ -1,35 +1,43 @@
 name: Build and release
 
+# A new version is released whenever "version" in package.json changes on main.
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+    paths: ['package.json']
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Existing tag to build (e.g. v1.0.0)'
-        required: true
 
 permissions:
   contents: write
 
-env:
-  TAG: ${{ github.event.inputs.tag || github.ref_name }}
-
 jobs:
   create-release:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}
+      skip: ${{ steps.v.outputs.skip }}
     steps:
-      - name: Create draft release
+      - uses: actions/checkout@v4
+      - id: v
+        name: Create draft release for this version
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create "$TAG" -R "$GITHUB_REPOSITORY" --draft --title "Karaoke System $TAG" \
+          TAG="v$(node -p "require('./package.json').version")"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          DRAFT=$(gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json isDraft -q .isDraft 2>/dev/null || echo none)
+          if [ "$DRAFT" = "false" ]; then echo "Release $TAG already published, nothing to do"; echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          if [ "$DRAFT" = "none" ]; then
+            gh release create "$TAG" -R "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "Karaoke System $TAG" \
               --notes "Karaoke System $TAG — Windows installer (.exe) and macOS (.dmg: arm64 for Apple Silicon M1–M4, x64 for Intel)."
           fi
 
   build:
     needs: create-release
+    if: needs.create-release.outputs.skip != 'true'
+    env:
+      TAG: ${{ needs.create-release.outputs.tag }}
     strategy:
       fail-fast: false
       matrix:
@@ -135,9 +143,11 @@ jobs:
           gh release upload "$TAG" "${FILES[@]}" --clobber -R "$GITHUB_REPOSITORY"
 
   publish:
-    needs: build
+    needs: [create-release, build]
     if: ${{ !cancelled() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
+    env:
+      TAG: ${{ needs.create-release.outputs.tag }}
     steps:
       - name: Publish release
         env:
