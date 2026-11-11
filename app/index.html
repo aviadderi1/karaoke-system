@@ -314,7 +314,7 @@ input[type=checkbox]{accent-color:var(--acc)}
     <textarea id="lyr" spellcheck="false" placeholder="Paste or type the lyrics here.&#10;&#10;Here comes the mor/ning&#10;light over the city"></textarea>
     <div class="flexr" style="margin-top:6px"><button class="pri" data-a="autosync"><i class="ti ti-wand"></i>Auto-sync</button><button id="toSync"><i class="ti ti-keyboard"></i>Tap sync</button><button id="spreadBtn" title="Spread words evenly inside lines that only have line timing"><i class="ti ti-arrows-split-2"></i>Auto-time words</button></div>
    </div>
-   <div class="pbody" data-b="fx"><div id="fxSearch"><i class="ti ti-search"></i><input type="text" id="fxQ" placeholder="Search effect controls" autocomplete="off" spellcheck="false"><button class="ghost" id="fxQx" title="Clear" style="display:none;padding:2px 4px"><i class="ti ti-x"></i></button><div id="fxSug"></div></div><div id="clipSec"></div><div id="lineFxCtl"></div><div id="fxCtl"></div><div id="logoCtl"></div>
+   <div class="pbody" data-b="fx"><div id="fxSearch"><i class="ti ti-search"></i><input type="text" id="fxQ" placeholder="Search effect controls" autocomplete="off" spellcheck="false"><button class="ghost" id="fxQx" title="Clear" style="display:none;padding:2px 4px"><i class="ti ti-x"></i></button><div id="fxSug"></div></div><div id="clipSec"></div><div id="lineFxCtl"></div><div id="fxCtl"></div>
     <div class="flexr" style="margin-top:8px"><button id="saveDef"><i class="ti ti-device-floppy"></i>Save as default style</button><button id="resetStyle"><i class="ti ti-restore"></i>Reset</button></div>
    </div>
    <div class="pbody" data-b="media">
@@ -333,6 +333,7 @@ input[type=checkbox]{accent-color:var(--acc)}
      </div>
      <div class="hint" id="sepHint">Uses the free local helper (yt-dlp and Demucs) on your computer. Run start.bat from the Karaoke Studio folder; it opens this page and the dot turns green.</div></div>
     <div class="mediaCard"><div class="flexr" style="justify-content:space-between"><span class="muted"><i class="ti ti-movie"></i> Video clip</span><button id="impVidBtn"><i class="ti ti-upload"></i>Import video</button></div><div class="nm" id="vidName" style="margin-top:6px">No video loaded</div><div class="small muted" id="vidInfo"></div></div>
+    <div class="mediaCard" id="logoCtl"></div>
     <div class="row" style="padding-left:0"><label>Audio source</label><select id="audioSrc"><option value="song">Song file</option><option value="video">Video's own audio</option></select></div>
     <div class="hint">The video you import becomes the background (V1). Lyrics are burned on top of it on render. If the video already contains the song, set audio source to the video's own audio.</div>
     <div class="lbl">Project</div>
@@ -722,10 +723,12 @@ function cover(ctx,el,w,h,W,H,z=1){if(!w||!h)return;const s=Math.max(W/w,H/h)*z;
 function updateBeat(){if(!analyser){S.beat*=0.9;return}analyser.getByteFrequencyData(S.freq);let lo=0;for(let i=1;i<7;i++)lo+=S.freq[i];lo/=6*255;S.lvAvg=(S.lvAvg||0)*0.95+lo*0.05;const hit=Math.max(0,lo-S.lvAvg)*4;S.beat=Math.max(S.beat*0.88,Math.min(1,hit))}
 
 /* ---------- controls builder (Premiere-style scrubby numbers) ---------- */
-function buildControls(root,schema,obj,onCh){
- root.innerHTML='';schema.forEach(([title,tag,items])=>{const sec=document.createElement('div');sec.className='sec';
+const FX_OPEN=new Set();
+function openFxSec(title){FX_OPEN.add(title);$$('#fxCtl .sec').forEach(sec=>{if(sec.dataset.title===title)sec.classList.remove('closed')})}
+function buildControls(root,schema,obj,onCh,mem){
+ root.innerHTML='';schema.forEach(([title,tag,items])=>{const sec=document.createElement('div');sec.className='sec';if(mem){sec.dataset.title=title;if(!mem.has(title))sec.classList.add('closed')}
   sec.innerHTML=`<div class="sech"><i class="ti ti-chevron-down"></i><span class="fx">${tag}</span>${title}</div><div class="secb"></div>`;const body=sec.querySelector('.secb');
-  sec.querySelector('.sech').onclick=()=>sec.classList.toggle('closed');
+  sec.querySelector('.sech').onclick=()=>{sec.classList.toggle('closed');if(mem){if(sec.classList.contains('closed'))mem.delete(title);else mem.add(title)}};
   items.forEach(it=>{if(it.show&&!it.show(obj))return;const row=document.createElement('div');row.className='row';row.innerHTML=`<label>${it.label}</label><span class="v"></span>`;const v=row.querySelector('.v');
    if(it.type==='num')v.appendChild(scrubber(it,obj,onCh));
    else if(it.type==='color'){const c=document.createElement('input');c.type='color';c.value=obj[it.k];c.oninput=()=>{obj[it.k]=c.value;onCh(it.k)};v.appendChild(c)}
@@ -752,15 +755,15 @@ const BG_SCHEMA=b=>[['Background','bg',[
  {k:'speed',label:'Speed',type:'num',min:0,max:5,step:0.05,dec:2,show:o=>!['none','solid','image','video'].includes(o.type)},{k:'intensity',label:'Intensity',type:'num',min:0.1,max:2,step:0.05,dec:2,show:o=>!['none','solid','gradient','image','video'].includes(o.type)},
  {k:'beat',label:'React to the beat',type:'check'},{k:'beatAmt',label:'Beat amount',type:'num',min:0,max:3,step:0.05,dec:2}]],
  ['Adjust','adj',[{k:'darken',label:'Darken',type:'num',min:0,max:0.9,step:0.01,pct:true},{k:'blur',label:'Blur',type:'num',min:0,max:40,step:0.5,dec:1,unit:'px'},{k:'vignette',label:'Vignette',type:'num',min:0,max:1,step:0.01,pct:true}]]];
-function buildLogoCtl(){const box=$('#logoCtl');const g=P.logo;box.innerHTML='';const sec=document.createElement('div');sec.className='sec';
- sec.innerHTML=`<div class="sech"><i class="ti ti-chevron-down"></i><span class="fx">logo</span>Logo</div><div class="secb"><div class="flexr" style="padding:2px 0 6px 18px;flex-wrap:wrap"><button id="lgAdd"><i class="ti ti-photo-plus"></i>${g?'Replace logo':'Add logo'}</button>${g?'<button id="lgEdit"><i class="ti ti-photo-edit"></i>Edit logo…</button><button id="lgDel"><i class="ti ti-trash"></i>Remove</button><button id="lgFull" title="Show for the whole song"><i class="ti ti-arrows-horizontal"></i>Whole song</button>':''}</div><div id="lgRows"></div>${g?'<div class="hint" style="padding-left:18px">Drag the logo on the picture to move it, drag a corner to resize. On the timeline (V4) drag its edges to show it only for part of the song.</div>':''}</div>`;
- box.appendChild(sec);sec.querySelector('.sech').onclick=()=>sec.classList.toggle('closed');$('#lgAdd').onclick=()=>$('#fLogo').click();
+function buildLogoCtl(){const box=$('#logoCtl');const g=P.logo;
+ box.innerHTML=`<div class="flexr" style="justify-content:space-between"><span class="muted"><i class="ti ti-badge"></i> Logo</span><button id="lgAdd"><i class="ti ti-photo-plus"></i>${g?'Replace logo':'Add logo'}</button></div>${g?'<div class="flexr" style="margin-top:6px;flex-wrap:wrap"><button id="lgEdit"><i class="ti ti-photo-edit"></i>Edit logo…</button><button id="lgFull" title="Show for the whole song"><i class="ti ti-arrows-horizontal"></i>Whole song</button><button id="lgDel"><i class="ti ti-trash"></i>Remove</button></div>':'<div class="nm" style="margin-top:6px">No logo</div>'}<div id="lgRows"></div>${g?'<div class="hint">Drag the logo on the picture to move it, drag a corner to resize. On the timeline (V4) drag its edges to show it only for part of the song.</div>':''}`;
+ $('#lgAdd').onclick=()=>$('#fLogo').click();
  if(g){$('#lgEdit').onclick=()=>openLogoEditor();$('#lgDel').onclick=()=>{P.logo=null;S.logoImg=null;S.logoSel=false;bump();buildLogoCtl();drawTL()};$('#lgFull').onclick=()=>{g.t0=0;g.t1=null;bump();drawTL()};
-  const rows=document.createElement('div');buildControls(rows,[['','',[{k:'opacity',label:'Opacity',type:'num',min:0.05,max:1,step:0.01,pct:true},{k:'scale',label:'Size',type:'num',min:0.02,max:1,step:0.005,pct:true},{k:'x',label:'Position X',type:'num',min:0,max:1,step:0.005,pct:true},{k:'y',label:'Position Y',type:'num',min:0,max:1,step:0.005,pct:true}]]],g,()=>bump());rows.querySelectorAll('.sech').forEach(h=>h.remove());$('#lgRows').appendChild(rows)}}
+  const rows=document.createElement('div');buildControls(rows,[['','',[{k:'opacity',label:'Opacity',type:'num',min:0.05,max:1,step:0.01,pct:true},{k:'scale',label:'Size',type:'num',min:0.02,max:1,step:0.005,pct:true},{k:'x',label:'Position X',type:'num',min:0,max:1,step:0.005,pct:true},{k:'y',label:'Position Y',type:'num',min:0,max:1,step:0.005,pct:true}]]],g,()=>bump());rows.querySelectorAll('.sech').forEach(h=>h.remove());rows.querySelectorAll('.row').forEach(r=>r.style.paddingLeft='0');$('#lgRows').appendChild(rows)}}
 function loadLogoFile(f){const rd=new FileReader();rd.onload=()=>{const im0=new Image();im0.onload=()=>{const m=Math.min(1,1024/Math.max(im0.naturalWidth,im0.naturalHeight));const cv=document.createElement('canvas');cv.width=Math.round(im0.naturalWidth*m);cv.height=Math.round(im0.naturalHeight*m);cv.getContext('2d').drawImage(im0,0,0,cv.width,cv.height);const src=cv.toDataURL('image/png');
- const im=new Image();im.onload=()=>{const keep=P.logo||{};P.logo={src,srcOrig:src,edit:null,x:keep.x??0.86,y:keep.y??0.12,scale:keep.scale??0.16,opacity:keep.opacity??0.9,t0:keep.t0||0,t1:keep.t1??null};S.logoImg=im;S.logoSel=true;bump();buildLogoCtl();showTab('leftP','fx');drawTL();openLogoEditor()};im.src=src};im0.src=rd.result};rd.readAsDataURL(f)}
+ const im=new Image();im.onload=()=>{const keep=P.logo||{};P.logo={src,srcOrig:src,edit:null,x:keep.x??0.86,y:keep.y??0.12,scale:keep.scale??0.16,opacity:keep.opacity??0.9,t0:keep.t0||0,t1:keep.t1??null};S.logoImg=im;S.logoSel=true;bump();buildLogoCtl();showTab('leftP','media');drawTL();openLogoEditor()};im.src=src};im0.src=rd.result};rd.readAsDataURL(f)}
 function restoreLogo(){S.logoImg=null;if(P.logo&&P.logo.src){const im=new Image();im.onload=()=>{S.logoImg=im;bump()};im.src=P.logo.src}}
-function buildFx(){buildControls($('#fxCtl'),STYLE_SCHEMA,P.style,(k,rebuild)=>{if(k==='font'||k==='weight')document.fonts.load(fontStr(72),'אבג abc').then(bump);bump();if(rebuild)buildFx()});buildClipSec()}
+function buildFx(){buildControls($('#fxCtl'),STYLE_SCHEMA,P.style,(k,rebuild)=>{if(k==='font'||k==='weight')document.fonts.load(fontStr(72),'אבג abc').then(bump);bump();if(rebuild)buildFx()},FX_OPEN);buildClipSec()}
 function buildBgCtl(){buildControls($('#bgCtl'),BG_SCHEMA(P.bg),P.bg,(k,rb)=>{bump();if(['c1','c2','c3'].includes(k))drawThumbs()})}
 function buildThumbs(){const box=$('#thumbs');box.innerHTML='';BG_PRESETS.forEach(p=>{const d=document.createElement('div');d.className='thumb';d.dataset.id=p.id;d.innerHTML=`<canvas width="160" height="90"></canvas><span>${p.name}</span>`;
  d.onclick=()=>{if(p.id==='image'&&!S.imgEl){$('#fImg').click();return}if(p.id==='video'&&!vid.src){$('#fVid').dataset.bg='1';$('#fVid').click();return}P.bg.type=p.id;markThumb();buildBgCtl();bump()};box.appendChild(d)});drawThumbs();markThumb()}
@@ -866,7 +869,7 @@ tl.addEventListener('mousedown',e=>{const r=tl.getBoundingClientRect(),x=e.clien
  if(S.tool==='zoom'){setZoom(S.pps*(e.altKey?0.6:1.6),x);return}
  if(y<ty.V4.y){drag={type:'scrub'};seek(x2t(x));return}
  if(y>=ty.V4.y&&y<ty.V4.y+ty.V4.h&&(S.tool==='select'||S.tool==='ripple')){if(P.logo){const a=t2x(P.logo.t0||0),b=t2x(P.logo.t1!=null?P.logo.t1:totalDur());if(x>=a-5&&x<=b+5){S.logoSel=true;drag={type:'logo',part:x-a<7?'in':b-x<7?'out':'body',x0:x,t0:P.logo.t0||0,t1:P.logo.t1!=null?P.logo.t1:totalDur()};drawTL();return}}drag={type:'scrub'};seek(x2t(x));return}
- if(y>=ty.V3.y&&y<ty.V3.y+ty.V3.h&&(S.tool==='select'||S.tool==='ripple')){const ci=hitCd(x);if(ci>=0){materializeCds();const cd=schedule().cds[ci];S.cdSel=ci;drag={type:'cd',mi:cd.mi,part:x-t2x(cd.t0)<7?'in':t2x(cd.t1)-x<7?'out':'body',x0:x,t0:cd.t0,t1:cd.t1};if(e.detail===2){showTab('leftP','fx');drag=null}drawTL();return}S.cdSel=-1;drag={type:'scrub'};seek(x2t(x));return}
+ if(y>=ty.V3.y&&y<ty.V3.y+ty.V3.h&&(S.tool==='select'||S.tool==='ripple')){const ci=hitCd(x);if(ci>=0){materializeCds();const cd=schedule().cds[ci];S.cdSel=ci;drag={type:'cd',mi:cd.mi,part:x-t2x(cd.t0)<7?'in':t2x(cd.t1)-x<7?'out':'body',x0:x,t0:cd.t0,t1:cd.t1};if(e.detail===2){openFxSec('Countdown');showTab('leftP','fx');drag=null}drawTL();return}S.cdSel=-1;drag={type:'scrub'};seek(x2t(x));return}
  if(y>=ty.A1.y&&S.tool==='select'){drag={type:'sel',t0:Math.max(0,x2t(x)),x0:x};return}
  const h=hitTok(x,y);
  if(S.tool==='razor'){if(h){splitTok(h.gi,x2t(x))}return}
@@ -1385,7 +1388,7 @@ $('#ctxMenu').addEventListener('click',ev=>{const d=ev.target.closest('[data-c]'
  else if(c==='cdAdd'){materializeCds();if(!P.style.cdOn){P.style.cdOn=true;buildFx()}const len=P.style.cdLen;P.countdowns.push({t0:Math.max(0,ctxT),t1:Math.max(0,ctxT)+len});bump();drawTL();toast('Countdown added. Drag it or its edges on V3.')}
  else if(c==='cdDel'){materializeCds();const cd=schedule().cds[ctxCd];if(cd&&cd.mi!=null){P.countdowns.splice(cd.mi,1);S.cdSel=-1;bump();drawTL()}}
  else if(c==='cdReset'){P.countdowns=null;S.cdSel=-1;bump();drawTL();toast('Countdowns are automatic again')}
- else if(c==='cdSettings'){showTab('leftP','fx')}
+ else if(c==='cdSettings'){openFxSec('Countdown');showTab('leftP','fx')}
  else if(c==='logoAdd')$('#fLogo').click();else if(c==='logoDel'){P.logo=null;S.logoImg=null;bump();buildLogoCtl();drawTL()}
  else if(c==='logoFull'){P.logo.t0=0;P.logo.t1=null;bump();drawTL()}else if(c==='logoFrom'){P.logo.t0=Math.min(ctxT,(P.logo.t1??1e9)-0.2);bump();drawTL()}else if(c==='logoTo'){P.logo.t1=Math.max(ctxT,(P.logo.t0||0)+0.2);bump();drawTL()}});
 
@@ -1481,7 +1484,7 @@ function fxMatch(q,it){const terms=[q,...Object.entries(FX_ALIAS).filter(([he])=
  let best=0;for(const w of terms){if(it.label.toLowerCase().startsWith(w))best=Math.max(best,3);else if(hay.split(/[\s,()]+/).some(x=>x.startsWith(w)))best=Math.max(best,2);else if(hay.includes(w))best=Math.max(best,1)}return best}
 let fxSugIdx=0,fxSugList=[];
 function fxFilter(q){q=q.trim().toLowerCase();const items=fxItems();$$('[data-b="fx"] .fxhide').forEach(e=>e.classList.remove('fxhide'));$('#fxQx').style.display=q?'':'none';
- if(!q){$('#fxSug').style.display='none';fxSugList=[];return}
+ if(!q){$('#fxSug').style.display='none';fxSugList=[];$$('#fxCtl .sec').forEach(sec=>sec.classList.toggle('closed',!FX_OPEN.has(sec.dataset.title)));return}
  const scored=items.map(it=>({it,sc:fxMatch(q,it)})).filter(x=>x.sc>0).sort((a,b)=>b.sc-a.sc);fxSugList=scored.slice(0,12).map(x=>x.it);
  const keep=new Set(scored.map(x=>x.it.row)),secs=new Set(scored.map(x=>x.it.secEl));
  $$('[data-b="fx"] .sec').forEach(sec=>{const t=((sec.querySelector('.sech')||{}).textContent||'').toLowerCase();if(t.includes(q)){sec.classList.remove('closed');return}if(!secs.has(sec)){sec.classList.add('fxhide');return}sec.classList.remove('closed');sec.querySelectorAll('.row').forEach(r=>{if(!keep.has(r))r.classList.add('fxhide')})});
@@ -1490,7 +1493,7 @@ function fxFilter(q){q=q.trim().toLowerCase();const items=fxItems();$$('[data-b=
 function renderFxSug(q){const box=$('#fxSug');if(!fxSugList.length){box.innerHTML='<div style="cursor:default;color:var(--txt2)">No matching controls</div>';box.style.display='block';return}
  const hl=t=>{const i=t.toLowerCase().indexOf(q);return i<0?esc(t):esc(t.slice(0,i))+'<b>'+esc(t.slice(i,i+q.length))+'</b>'+esc(t.slice(i+q.length))};
  box.innerHTML=fxSugList.map((it,i)=>`<div data-i="${i}" class="${i===fxSugIdx?'on':''}">${hl(it.label)}<span>${esc(it.sec)}</span></div>`).join('');box.style.display='block'}
-function fxGo(it){if(!it)return;$('#fxQ').value='';fxFilter('');it.secEl.classList.remove('closed');it.row.scrollIntoView({block:'center',behavior:'smooth'});it.row.classList.remove('flash');void it.row.offsetWidth;it.row.classList.add('flash');
+function fxGo(it){if(!it)return;if(it.secEl.dataset.title)FX_OPEN.add(it.secEl.dataset.title);$('#fxQ').value='';fxFilter('');it.secEl.classList.remove('closed');it.row.scrollIntoView({block:'center',behavior:'smooth'});it.row.classList.remove('flash');void it.row.offsetWidth;it.row.classList.add('flash');
  const ctl=it.row.querySelector('input:not([type=checkbox]),select,.scrub,input[type=checkbox]');setTimeout(()=>{if(ctl&&ctl.focus){ctl.focus()}},250)}
 $('#fxQ').addEventListener('input',e=>{const el=e.target;const typed=el.value;fxFilter(typed);
  if(e.inputType&&e.inputType.startsWith('insert')&&fxSugList.length){const q=typed.toLowerCase(),top=fxSugList[0].label;if(q&&top.toLowerCase().startsWith(q)&&top.length>typed.length){el.value=typed+top.slice(typed.length);el.setSelectionRange(typed.length,top.length)}}});
@@ -1538,7 +1541,7 @@ function monHit(p){const g=S.logoBox;const hs=10*p.k;
  return null}
 let mdrag=null;
 mon.addEventListener('mousedown',e=>{const p=monPt(e),hit=monHit(p);if(!hit){let ch=false;if(S.logoSel){S.logoSel=false;ch=true}if(S.lineSel!=null){S.lineSel=null;buildLineFxCtl();ch=true}if(ch)drawTL();return}e.preventDefault();pause();const h=hit.h;
- if(h==='logo'||h==='logoSize'){S.logoSel=true;S.lineSel=null;buildLineFxCtl();const g=P.logo,W=mon.width,H=mon.height;mdrag={h,p0:p,x0:g.x,y0:g.y,s0:g.scale,c:{x:g.x*W,y:g.y*H}};mdrag.d0=Math.hypot(p.x-mdrag.c.x,p.y-mdrag.c.y);showTab('leftP','fx')}
+ if(h==='logo'||h==='logoSize'){S.logoSel=true;S.lineSel=null;buildLineFxCtl();const g=P.logo,W=mon.width,H=mon.height;mdrag={h,p0:p,x0:g.x,y0:g.y,s0:g.scale,c:{x:g.x*W,y:g.y*H}};mdrag.d0=Math.hypot(p.x-mdrag.c.x,p.y-mdrag.c.y);showTab('leftP','media')}
  else if(h==='cd'){const b=S.cdBox;mdrag={h,p0:p,cx:b.cx,cy:b.cy}}
  else{const b=hit.b;S.logoSel=false;if(S.lineSel!==b.li){S.lineSel=b.li;buildLineFxCtl();showTab('leftP','fx')}const T=fxTarget(b.li);if(!T)return;const o=toScreen(b,0,0);
   mdrag={h,p0:p,li:b.li,T,T0:{...T},o,d0:Math.hypot(p.x-o.x,p.y-o.y),a0:Math.atan2(p.y-o.y,p.x-o.x)}}});
