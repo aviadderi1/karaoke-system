@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Find lyrics on the web · Karaoke System</title>
+<html><head><meta charset="UTF-8"><title>Find lyrics on the web · Karaoke Lab</title>
 <style>
 html,body{margin:0;background:#1d1d1d;font-family:'Segoe UI',-apple-system,'Helvetica Neue',Arial,sans-serif;font-size:12.5px;color:#ddd;overflow:hidden}
 #bar{height:46px;display:flex;align-items:center;gap:6px;padding:0 8px;border-bottom:1px solid #313131;box-sizing:border-box;background:#232323}
@@ -25,7 +25,7 @@ input:focus{border-color:#2d8ceb}
 const $=id=>document.getElementById(id),msg=t=>{const m=$('msg');m.textContent=t;m.classList.add('on');clearTimeout(msg.t);msg.t=setTimeout(()=>m.classList.remove('on'),2600)};
 $('back').onclick=()=>lw.action('back');$('fwd').onclick=()=>lw.action('forward');$('rel').onclick=()=>lw.action('reload');
 $('url').onkeydown=e=>{if(e.key==='Enter'){lw.action('go',$('url').value.trim());$('url').blur()}};
-$('sel').onclick=async()=>{const r=await lw.action('take','selection');msg(r&&r.ok?`Sent ${r.lines} lines to Karaoke System`:'Select the lyrics on the page first (drag with the mouse)')};
+$('sel').onclick=async()=>{const r=await lw.action('take','selection');msg(r&&r.ok?`Sent ${r.lines} lines to Karaoke Lab`:'Select the lyrics on the page first (drag with the mouse)')};
 $('page').onclick=async()=>{const r=await lw.action('take','page');msg(r&&r.ok?`Sent ${r.lines} lines. Remove the extra text in the lyrics box.`:'The page has no text')};
 lw.onUrl(u=>{if(document.activeElement!==$('url'))$('url').value=u});
 </script></body></html>

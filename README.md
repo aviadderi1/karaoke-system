@@ -1,4 +1,4 @@
-# Karaoke System
+# Karaoke Lab
 
 **AD SOUND & SERVICE**
 
@@ -10,9 +10,9 @@ Get the latest version from **[Releases](../../releases/latest)**:
 
 | System | File |
 |---|---|
-| Windows 10/11 | `Karaoke-System-Setup-x.y.z.exe` |
-| Mac with Apple Silicon (M1–M4) | `Karaoke-System-x.y.z-mac-arm64.dmg` |
-| Mac with Intel | `Karaoke-System-x.y.z-mac-x64.dmg` |
+| Windows 10/11 | `Karaoke-Lab-Setup-x.y.z.exe` |
+| Mac with Apple Silicon (M1–M4) | `Karaoke-Lab-x.y.z-mac-arm64.dmg` |
+| Mac with Intel | `Karaoke-Lab-x.y.z-mac-x64.dmg` |
 
 **First launch**
 - Windows: if SmartScreen appears, click **More info → Run anyway**.

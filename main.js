@@ -1,4 +1,4 @@
-// Karaoke System - AD SOUND & SERVICE
+// Karaoke Lab - AD SOUND & SERVICE
 'use strict';
 const { app, BrowserWindow, WebContentsView, ipcMain, shell, Menu, dialog } = require('electron');
 const path = require('path');
@@ -8,7 +8,9 @@ const { spawn } = require('child_process');
 const { createServer, listen } = require('./server');
 
 const REPO = { owner: 'aviadderi1', repo: 'karaoke-system' };
-const SPLASH_MS = 7000;
+const SPLASH_MS = 10000;
+// keep projects and settings from the "Karaoke System" days
+app.setPath('userData', path.join(app.getPath('appData'), 'Karaoke System'));
 const isWin = process.platform === 'win32', isMac = process.platform === 'darwin';
 let splash = null, mainWin = null, port = 0, updateInfo = null;
 
@@ -30,7 +32,7 @@ function lwUrlFor(q) { q = String(q || '').trim(); if (/^https?:\/\//i.test(q)) 
 function openLyricsWeb(q) {
   const url = lwUrlFor(q);
   if (lw && !lw.isDestroyed()) { lv.webContents.loadURL(url); lw.show(); lw.focus(); return; }
-  lw = new BrowserWindow({ width: 1150, height: 820, title: 'Find lyrics on the web · Karaoke System', backgroundColor: '#1d1d1d', autoHideMenuBar: true,
+  lw = new BrowserWindow({ width: 1150, height: 820, title: 'Find lyrics on the web · Karaoke Lab', backgroundColor: '#1d1d1d', autoHideMenuBar: true,
     icon: path.join(__dirname, 'build', 'icon.png'), webPreferences: { preload: path.join(__dirname, 'lyrics-preload.js'), contextIsolation: true } });
   lw.loadFile(path.join(__dirname, 'lyrics-browser.html'));
   lv = new WebContentsView({ webPreferences: { contextIsolation: true, sandbox: true } });
@@ -95,20 +97,20 @@ function selfUpdateYtdlp(p) {
 
 // ------------------------------------------------------------ windows
 function createSplash() {
-  splash = new BrowserWindow({ width: 760, height: 428, frame: false, resizable: false, movable: true, center: true, show: false,
-    backgroundColor: '#07040f', skipTaskbar: false, title: 'Karaoke System', icon: path.join(__dirname, 'build', 'icon.png'),
+  splash = new BrowserWindow({ width: 1100, height: 614, frame: false, resizable: false, movable: true, center: true, show: false,
+    backgroundColor: '#07040f', skipTaskbar: false, title: 'Karaoke Lab', icon: path.join(__dirname, 'build', 'icon.png'),
     webPreferences: { contextIsolation: true } });
   splash.loadFile(path.join(__dirname, 'splash.html'), { query: { v: app.getVersion() } });
   splash.once('ready-to-show', () => splash.show());
 }
 function createMain() {
   mainWin = new BrowserWindow({ width: 1600, height: 950, minWidth: 1100, minHeight: 680, show: false, backgroundColor: '#161616',
-    title: 'Karaoke System', icon: path.join(__dirname, 'build', 'icon.png'),
+    title: 'Karaoke Lab', icon: path.join(__dirname, 'build', 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false } });
   if (!isMac) mainWin.setMenuBarVisibility(false);
   mainWin.webContents.setWindowOpenHandler(({ url }) => {
     if (url === 'about:blank' || url === '') {
-      return { action: 'allow', overrideBrowserWindowOptions: { width: 1280, height: 760, title: 'Program monitor · Karaoke System', backgroundColor: '#000', autoHideMenuBar: true, icon: path.join(__dirname, 'build', 'icon.png') } };
+      return { action: 'allow', overrideBrowserWindowOptions: { width: 1280, height: 760, title: 'Program monitor · Karaoke Lab', backgroundColor: '#000', autoHideMenuBar: true, icon: path.join(__dirname, 'build', 'icon.png') } };
     }
     if (/^https?:\/\//.test(url)) shell.openExternal(url);
     return { action: 'deny' };
@@ -120,7 +122,7 @@ function createMain() {
 function macMenu() {
   if (!isMac) { Menu.setApplicationMenu(null); return; }
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { label: 'Karaoke System', submenu: [{ role: 'about' }, { label: 'Check for updates…', click: () => checkUpdates(true) }, { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { type: 'separator' }, { role: 'quit' }] },
+    { label: 'Karaoke Lab', submenu: [{ role: 'about' }, { label: 'Check for updates…', click: () => checkUpdates(true) }, { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { type: 'separator' }, { role: 'quit' }] },
     { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
     { label: 'View', submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'togglefullscreen' }] },
     { role: 'windowMenu' }]));
@@ -131,7 +133,7 @@ function sendUpdate(info) { updateInfo = info; if (mainWin && !mainWin.isDestroy
 function cmpVer(a, b) { const pa = String(a).replace(/^v/, '').split('.').map(Number), pb = String(b).replace(/^v/, '').split('.').map(Number); for (let i = 0; i < 3; i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return d; } return 0; }
 function getJSON(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, { headers: { 'User-Agent': 'Karaoke-System', Accept: 'application/vnd.github+json' } }, r => {
+    https.get(url, { headers: { 'User-Agent': 'Karaoke-Lab', Accept: 'application/vnd.github+json' } }, r => {
       if (r.statusCode >= 300 && r.statusCode < 400 && r.headers.location) return getJSON(r.headers.location).then(resolve, reject);
       let d = ''; r.on('data', c => d += c); r.on('end', () => { try { r.statusCode === 200 ? resolve(JSON.parse(d)) : reject(new Error('HTTP ' + r.statusCode)); } catch (e) { reject(e); } });
     }).on('error', reject);
@@ -194,7 +196,7 @@ app.whenReady().then(async () => {
   await Promise.all([ready, new Promise(r => setTimeout(r, Math.max(0, SPLASH_MS - (Date.now() - t0))))]);
   mainWin.maximize(); mainWin.show();
   if (splash && !splash.isDestroyed()) splash.close();
-  if (engineErr) dialog.showErrorBox('Karaoke System', 'The built-in engine could not start:\n' + engineErr.message);
+  if (engineErr) dialog.showErrorBox('Karaoke Lab', 'The built-in engine could not start:\n' + engineErr.message);
   setTimeout(() => checkUpdates(false), 6000);
 });
 app.on('window-all-closed', () => app.quit());

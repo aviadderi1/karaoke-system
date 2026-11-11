@@ -1,7 +1,7 @@
 {
   "name": "karaoke-system",
-  "productName": "Karaoke System",
-  "version": "1.0.6",
+  "productName": "Karaoke Lab",
+  "version": "1.1.0",
   "description": "Karaoke subtitle studio with YouTube import and vocal removal.",
   "author": "AD SOUND & SERVICE",
   "license": "UNLICENSED",
@@ -21,10 +21,10 @@
   },
   "build": {
     "appId": "com.adsound.karaokesystem",
-    "productName": "Karaoke System",
+    "productName": "Karaoke Lab",
     "copyright": "© AD SOUND & SERVICE",
     "directories": { "output": "dist", "buildResources": "build" },
-    "files": ["main.js", "server.js", "preload.js", "lyrics-preload.js", "lyrics-browser.html", "splash.html", "app/**", "build/icon.png", "package.json"],
+    "files": ["main.js", "server.js", "preload.js", "lyrics-preload.js", "lyrics-browser.html", "splash.html", "app/**", "build/icon.png", "build/splash.jpg", "build/letters_mask.png", "package.json"],
     "extraResources": [
       { "from": "resources/bin", "to": "bin", "filter": ["**/*"] },
       { "from": "resources/engine", "to": "engine", "filter": ["**/*"] },
@@ -35,7 +35,7 @@
     "win": {
       "target": [{ "target": "nsis", "arch": ["x64"] }],
       "icon": "build/icon.png",
-      "artifactName": "Karaoke-System-Setup-${version}.${ext}"
+      "artifactName": "Karaoke-Lab-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -43,7 +43,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Karaoke System",
+      "shortcutName": "Karaoke Lab",
       "differentialPackage": false
     },
     "mac": {
@@ -53,8 +53,8 @@
       "identity": null,
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
-      "artifactName": "Karaoke-System-${version}-mac-${arch}.${ext}"
+      "artifactName": "Karaoke-Lab-${version}-mac-${arch}.${ext}"
     },
-    "dmg": { "title": "Karaoke System ${version}", "writeUpdateInfo": false }
+    "dmg": { "title": "Karaoke Lab ${version}", "writeUpdateInfo": false }
   }
 }

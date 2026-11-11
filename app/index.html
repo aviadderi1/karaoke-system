@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Karaoke System</title>
+<title>Karaoke Lab</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Montserrat:wght@700;900&family=Anton&family=Oswald:wght@500;700&family=Bebas+Neue&family=Rubik:wght@500;700;900&family=Heebo:wght@500;800;900&family=Assistant:wght@700;800&family=Secular+One&family=Poppins:wght@700;900&family=Roboto:wght@700;900&display=swap" rel="stylesheet">
@@ -189,7 +189,7 @@ input[type=checkbox]{accent-color:var(--acc)}
 <body>
 <div id="app">
  <div id="menubar">
-  <span class="logo">KS</span>
+  <span class="logo">KL</span>
   <div class="menu" data-m="file"><span>File</span><div class="drop">
    <div data-a="new">New project<kbd>Ctrl+Alt+N</kbd></div>
    <div data-a="open">Open project…<kbd>Ctrl+O</kbd></div>
@@ -257,7 +257,7 @@ input[type=checkbox]{accent-color:var(--acc)}
   <div class="menu"><span>Help</span><div class="drop">
    <div data-a="keys">Keyboard shortcuts<kbd>F1</kbd></div>
    <div data-a="checkUpd">Check for updates…</div>
-   <div data-a="about">About Karaoke System</div>
+   <div data-a="about">About Karaoke Lab</div>
   </div></div>
   <span id="projname">Untitled</span>
  </div>
@@ -398,7 +398,7 @@ input[type=checkbox]{accent-color:var(--acc)}
    <div style="display:grid;grid-template-columns:120px minmax(0,1fr)"><div style="background:#222;border-right:1px solid var(--line)"></div><div id="hscroll"><div id="hthumb"></div></div></div>
   </div>
  </div>
- <div id="status"><span id="stTool">Selection tool</span><span id="stSync"></span><span id="stSel"></span><span id="updBox" style="display:none;margin-left:auto"></span><span class="sp" id="brand">AD SOUND &amp; SERVICE · Karaoke System</span></div>
+ <div id="status"><span id="stTool">Selection tool</span><span id="stSync"></span><span id="stSel"></span><span id="updBox" style="display:none;margin-left:auto"></span><span class="sp" id="brand">AD SOUND &amp; SERVICE · Karaoke Lab</span></div>
 </div>
 <div id="toast"></div>
 <div id="modal"><div class="box" id="modalBox"></div></div>
@@ -935,7 +935,7 @@ function exportASS(){const st=P.style,sch=schedule();if(!sch.L.length)return toa
    o+=`Dialogue: 2,${assTime(Math.max(0,t0))},${assTime(t1)},Karaoke,,0,0,0,,${body}\n`}});
  download(safeName()+'.ass','﻿'+o,'text/plain;charset=utf-8');toast('.ass exported')}
 function lrcT(t){t=Math.max(0,t);const m=Math.floor(t/60),s=(t%60).toFixed(2).padStart(5,'0');return `${String(m).padStart(2,'0')}:${s}`}
-function exportLRC(){if(!S.flat.some(f=>f.tok.s!=null))return toast('Sync some lyrics first');let o=`[ti:${P.title}]\n[ar:${P.artist}]\n[by:AD SOUND & SERVICE · Karaoke System]\n`;
+function exportLRC(){if(!S.flat.some(f=>f.tok.s!=null))return toast('Sync some lyrics first');let o=`[ti:${P.title}]\n[ar:${P.artist}]\n[by:AD SOUND & SERVICE · Karaoke Lab]\n`;
  P.lines.forEach(l=>{const tm=l.filter(k=>k.s!=null);if(!tm.length)return;o+=`[${lrcT(tm[0].s)}]`+l.map((k,i)=>(k.s!=null?`<${lrcT(k.s)}>`:'')+k.t+(k.j||i===l.length-1?'':' ')).join('')+(l[l.length-1].e!=null?`<${lrcT(l[l.length-1].e)}>`:'')+'\n'});
  download(safeName()+'.lrc',o,'text/plain;charset=utf-8');toast('.lrc exported')}
 
@@ -1012,7 +1012,7 @@ function act(a){switch(a){
  case 'maxmon':toggleMax();break;case 'floatmon':toggleFloat();break;case 'popmon':openPopup();break;
  case 'safe':S.safe=!S.safe;fitMonitor();break;case 'resetLayout':$('#app').style.gridTemplateRows='';onResize();break;
  case 'keys':showKeys();break;case 'checkUpd':if(DESKTOP){toast('Checking for updates…');ksDesktop.checkUpdates()}else toast('Updates are available in the desktop version');break;
- case 'about':modal(`<h3>Karaoke System${DESKTOP?' '+ksDesktop.version:''}</h3><p class="muted">Karaoke subtitle editor with tap sync, timeline editing, animated backgrounds and Full HD rendering.</p><p class="muted">AD SOUND &amp; SERVICE</p><div style="text-align:right"><button onclick="closeModal()">Close</button></div>`);break;
+ case 'about':modal(`<h3>Karaoke Lab${DESKTOP?' '+ksDesktop.version:''}</h3><p class="muted">Karaoke subtitle editor with tap sync, timeline editing, animated backgrounds and Full HD rendering.</p><p class="muted">AD SOUND &amp; SERVICE</p><div style="text-align:right"><button onclick="closeModal()">Close</button></div>`);break;
 }}
 function modal(html){$('#modalBox').style.width='';$('#modalBox').innerHTML=html;$('#modal').classList.add('on')}
 function closeModal(){$('#modal').classList.remove('on')}
@@ -1047,7 +1047,7 @@ $('#fImg').onchange=e=>{const f=e.target.files[0];if(f)loadImage(f);e.target.val
 $('#fLyr').onchange=async e=>{const f=e.target.files[0];if(f)await importLyrFile(f);e.target.value=''};
 $('#fProj').onchange=async e=>{const f=e.target.files[0];if(f)await openProject(f);e.target.value=''};
 async function importLyrFile(f){const txt=await f.text();pushUndo();if(/\[\d+:\d+/.test(txt))importLRC(txt);else{$('#lyr').value=txt;applyText(txt,false)}workspace('lyrics');toast('Lyrics imported')}
-async function openProject(f){try{const j=JSON.parse(await f.text());P=Object.assign(newProject(),j);P.style=Object.assign({},DEF_STYLE,j.style);P.bg=Object.assign({},DEF_BG,j.bg);S.undo=[];S.redo=[];refreshAll();toast('Project opened. Re-import the song and video.')}catch(e){toast('That file is not a Karaoke System project')}}
+async function openProject(f){try{const j=JSON.parse(await f.text());P=Object.assign(newProject(),j);P.style=Object.assign({},DEF_STYLE,j.style);P.bg=Object.assign({},DEF_BG,j.bg);S.undo=[];S.redo=[];refreshAll();toast('Project opened. Re-import the song and video.')}catch(e){toast('That file is not a Karaoke Lab project')}}
 // stock video
 $('#pexKey').value=localStorage.getItem('ks_pexels')||'';$('#pexKey').onchange=e=>localStorage.setItem('ks_pexels',e.target.value.trim());
 $('#pexHelp').onclick=()=>modal(`<h3>Free Pexels API key</h3><ol style="line-height:1.8"><li>Open <a href="https://www.pexels.com/api/" target="_blank" style="color:var(--acc)">pexels.com/api</a> and sign up (free).</li><li>Click "Your API key" and copy it.</li><li>Paste it into the key field here. It's stored only in this browser.</li></ol><p class="muted">Pexels videos are free to use, including commercially.</p><div style="text-align:right"><button onclick="closeModal()">Close</button></div>`);
@@ -1239,7 +1239,7 @@ const HELPER=location.protocol.startsWith('http')?'':'http://127.0.0.1:8765';con
 S.mix='guide';S.guideDb=-12;
 async function helperStatus(silent){try{const ctl=new AbortController();setTimeout(()=>ctl.abort(),2500);const r=await fetch(HELPER+'/status',{signal:ctl.signal});const j=await r.json();S.helper=j;
   $('#hlpDot').style.background='#3ddc84';$('#hlpTxt').textContent=j.desktop?(j.ytdlp&&j.engine?'Built-in engine ready':'Engine incomplete'):`Helper connected · ${j.device==='cuda'?'GPU':'CPU'}`;return j}
- catch(e){S.helper=null;$('#hlpDot').style.background='#e5484d';$('#hlpTxt').textContent='Helper not running';if(!silent&&DESKTOP)modal(`<h3>Engine not responding</h3><p>The built-in YouTube and separation engine didn't answer. Restart Karaoke System. If it keeps happening, reinstall the latest version.</p><div style="text-align:right"><button onclick="closeModal()">Close</button></div>`);else if(!silent)modal(`<h3>Local helper isn't running</h3><p>YouTube import and vocal removal run in a small free helper on your computer.</p><ol style="line-height:1.9"><li>Download the <b>Karaoke Studio</b> folder (with install.bat and start.bat).</li><li>Run <span class="kbd">install.bat</span> once. It takes a few minutes and about 2 GB.</li><li>Run <span class="kbd">start.bat</span>. It starts the helper and opens Karaoke Studio at <span class="kbd">http://127.0.0.1:8765</span>.</li></ol><p class="muted">If you opened this file directly from disk, open it through start.bat instead, so the browser allows the connection.</p><div style="text-align:right"><button onclick="closeModal()">Close</button></div>`);return null}}
+ catch(e){S.helper=null;$('#hlpDot').style.background='#e5484d';$('#hlpTxt').textContent='Helper not running';if(!silent&&DESKTOP)modal(`<h3>Engine not responding</h3><p>The built-in YouTube and separation engine didn't answer. Restart Karaoke Lab. If it keeps happening, reinstall the latest version.</p><div style="text-align:right"><button onclick="closeModal()">Close</button></div>`);else if(!silent)modal(`<h3>Local helper isn't running</h3><p>YouTube import and vocal removal run in a small free helper on your computer.</p><ol style="line-height:1.9"><li>Download the <b>Karaoke Studio</b> folder (with install.bat and start.bat).</li><li>Run <span class="kbd">install.bat</span> once. It takes a few minutes and about 2 GB.</li><li>Run <span class="kbd">start.bat</span>. It starts the helper and opens Karaoke Studio at <span class="kbd">http://127.0.0.1:8765</span>.</li></ol><p class="muted">If you opened this file directly from disk, open it through start.bat instead, so the browser allows the connection.</p><div style="text-align:right"><button onclick="closeModal()">Close</button></div>`);return null}}
 $('#hlpState').onclick=()=>helperStatus(false);
 async function waitJob(id,onp){for(;;){await new Promise(r=>setTimeout(r,700));const j=await (await fetch(HELPER+'/job/'+id)).json();if(onp)onp(j);if(j.state==='done')return j.result;if(j.state==='error'||j.state==='missing'||j.state==='cancelled')throw new Error(j.msg||j.state)}}
 function bar(id,p){$('#'+id+'W').style.display='';$('#'+id).style.width=(clamp(p,0,1)*100).toFixed(1)+'%'}
@@ -1284,7 +1284,7 @@ if(DESKTOP){$('#sepHint').textContent='Runs on the built-in engine on this compu
  ksDesktop.onUpdate(u=>{if(!u)return;ub.style.display='';
   if(u.state==='downloading'){ub.innerHTML=`<span style="color:var(--acc)"><i class="ti ti-download"></i> Downloading update ${u.version||''}${u.percent?' · '+u.percent+'%':''}</span>`}
   else if(u.state==='ready'){ub.innerHTML=`<button class="pri" id="updGo" style="height:18px;padding:0 8px;font-size:11px"><i class="ti ti-refresh"></i>Restart to update to ${u.version}</button>`;$('#updGo').onclick=()=>ksDesktop.installUpdate();toast(`Version ${u.version} is ready. Restart to update.`,5000)}
-  else if(u.state==='available'){ub.innerHTML=`<button class="pri" id="updGo" style="height:18px;padding:0 8px;font-size:11px"><i class="ti ti-download"></i>Download version ${u.version}</button>`;$('#updGo').onclick=()=>ksDesktop.installUpdate();toast(`Karaoke System ${u.version} is available`,5000)}
+  else if(u.state==='available'){ub.innerHTML=`<button class="pri" id="updGo" style="height:18px;padding:0 8px;font-size:11px"><i class="ti ti-download"></i>Download version ${u.version}</button>`;$('#updGo').onclick=()=>ksDesktop.installUpdate();toast(`Karaoke Lab ${u.version} is available`,5000)}
   else if(u.state==='none'){ub.style.display='none';toast(`You're on the latest version (${u.version})`)}
   else if(u.state==='error'){ub.style.display='none';toast('Update check failed: '+(u.msg||''),5000)}});
 }
@@ -1518,7 +1518,7 @@ $$('.rz').forEach(h=>h.addEventListener('mousedown',e=>{e.preventDefault();e.sto
   const keep=S.lock16;S.lock16=false;applyFloat(r);S.lock16=keep};
  const up=()=>{removeEventListener('mousemove',mv);removeEventListener('mouseup',up);localStorage.setItem('ks_float',JSON.stringify(S.frect))};addEventListener('mousemove',mv);addEventListener('mouseup',up)}));
 function openPopup(){if(S.popup&&!S.popup.closed){S.popup.focus();return}const w=window.open('','ks_monitor','width=1280,height=760');if(!w)return toast('Allow pop-ups for this page to open the monitor window',4000);S.popup=w;
- w.document.open();w.document.write(`<!DOCTYPE html><html><head><title>Program monitor · Karaoke System</title><style>html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:'Source Sans 3',system-ui,sans-serif}canvas{position:absolute;inset:0;width:100%;height:100%}#h{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:rgba(30,30,30,.9);color:#ddd;padding:8px 14px;border-radius:4px;font-size:13px;transition:opacity .6s}</style></head><body><canvas id="c"></canvas><div id="h">Double-click or F11 for full screen · Space and the sync keys work here too</div></body></html>`);w.document.close();
+ w.document.open();w.document.write(`<!DOCTYPE html><html><head><title>Program monitor · Karaoke Lab</title><style>html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:'Source Sans 3',system-ui,sans-serif}canvas{position:absolute;inset:0;width:100%;height:100%}#h{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:rgba(30,30,30,.9);color:#ddd;padding:8px 14px;border-radius:4px;font-size:13px;transition:opacity .6s}</style></head><body><canvas id="c"></canvas><div id="h">Double-click or F11 for full screen · Space and the sync keys work here too</div></body></html>`);w.document.close();
  const c=w.document.getElementById('c');S.popCtx=c.getContext('2d');S.popCanvas=c;
  w.addEventListener('keydown',onKey);w.addEventListener('keyup',onKeyUp);c.addEventListener('dblclick',()=>{w.document.fullscreenElement?w.document.exitFullscreen():w.document.documentElement.requestFullscreen().catch(()=>{})});
  setTimeout(()=>{try{w.document.getElementById('h').style.opacity=0}catch(e){}},4000);$('#popBtn').classList.add('on');fitMonitor();toast('Monitor opened in a separate window')}
