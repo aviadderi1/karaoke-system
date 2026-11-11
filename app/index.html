@@ -110,6 +110,9 @@ input[type=checkbox]{accent-color:var(--acc)}
 #syncstrip .tk.done{color:#9fcbfa;background:#1b2f45}
 #syncstrip .tk.next{color:#fff;border-color:var(--red);background:#3a1a1c}
 #syncstrip .tk.cur{color:#fff;background:var(--acc2)}
+#syncstrip .tk{cursor:pointer}#syncstrip .tk:hover{border-color:#5a7fa8}#syncstrip .tk.editing{outline:2px solid var(--acc);color:#fff}
+#wePop{position:fixed;z-index:84;width:320px;background:#262626;border:1px solid var(--line2);border-radius:6px;padding:10px;box-shadow:0 12px 32px rgba(0,0,0,.6);display:none}#wePop.on{display:block}
+#wePop .del{color:#ff8a8a;border-color:#5a2a2a}
 /* bg */
 .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px}
 .thumb{position:relative;border:2px solid transparent;border-radius:4px;cursor:pointer;overflow:hidden;background:#111}
@@ -400,6 +403,12 @@ input[type=checkbox]{accent-color:var(--acc)}
  <canvas id="wcPrev" width="640" height="128"></canvas>
  <div class="flexr" style="justify-content:space-between"><button id="wcReset"><i class="ti ti-restore"></i>Reset to default</button><button class="pri" id="wcApply"><i class="ti ti-check"></i>Apply</button></div>
 </div>
+<div id="wePop">
+ <div class="muted small" style="margin-bottom:5px" id="weTitle">Edit word</div>
+ <div class="flexr"><input type="text" id="weIn" style="flex:1;min-width:0;font-size:14px"><button class="pri" id="weSave"><i class="ti ti-check"></i>Save</button></div>
+ <div class="muted small" style="margin-top:5px">Enter saves · Esc cancels · a space splits it into two words</div>
+ <div class="flexr" style="margin-top:9px;flex-wrap:wrap"><button class="del" id="weDel"><i class="ti ti-trash"></i>Delete word</button><button id="weJoin"><i class="ti ti-arrow-merge-left"></i>Join with previous</button><button id="weColor"><i class="ti ti-palette"></i>Color…</button></div>
+</div>
 <div id="ctxMenu"><div data-c="color">Word color…</div><div data-c="text">Edit text…</div><div data-c="play">Play this line</div><div data-c="clear">Clear timing</div></div>
 <audio id="aud" preload="auto"></audio>
 <audio id="audV" preload="auto"></audio>
@@ -687,7 +696,7 @@ function updateSyncStrip(){const el=$('#syncstrip');const t=curT();let li;
  const key=li+'|'+S.syncIdx+'|'+S.armed+'|'+S.ver+'|'+(S.holding??'')+'|'+Math.floor(t*10);if(el.dataset.k===key)return;el.dataset.k=key;
  if(li<0||!P.lines[li]){el.innerHTML='<span class="muted small">'+(S.flat.length?'All words are synced. Use the timeline to fine-tune.':'Add lyrics in the Lyrics panel to start.')+'</span>';return}
  const base=S.flat.findIndex(f=>f.li===li);el.dir=lineRTL(li)?'rtl':'ltr';
- el.innerHTML=`<span class="muted small" style="margin-inline-end:6px">Line ${li+1}</span>`+P.lines[li].map((k,i)=>{const gi=base+i;let c='tk';if(S.armed&&gi===S.syncIdx)c+=' next';else if(gi===S.holding)c+=' cur';else if(k.s!=null&&t>=k.s)c+=' done';return `<span class="${c}">${k.t}${k.j?'-':''}</span>`}).join('');
+ el.innerHTML=`<span class="muted small" style="margin-inline-end:6px">Line ${li+1}</span>`+P.lines[li].map((k,i)=>{const gi=base+i;let c='tk';if(S.armed&&gi===S.syncIdx)c+=' next';else if(gi===S.holding)c+=' cur';else if(k.s!=null&&t>=k.s)c+=' done';if(gi===WE.gi&&$('#wePop').classList.contains('on'))c+=' editing';return `<span class="${c}" data-gi="${gi}">${esc(k.t)}${k.j?'-':''}</span>`}).join('');
  const nx=P.lines[li+1];if(nx)el.innerHTML+=`<span class="muted small" style="margin-inline-start:12px">next: ${nx.map(k=>k.t+(k.j?'':' ')).join('').slice(0,40)}</span>`}
 
 /* ---------- timeline ---------- */
@@ -993,7 +1002,7 @@ addEventListener('drop',async e=>{e.preventDefault();dc=0;$('#drop').classList.r
 function inField(e){const t=e.target;return t&&(t.tagName==='TEXTAREA'||(t.tagName==='INPUT'&&!['checkbox','range','color'].includes(t.type))||t.tagName==='SELECT')}
 function onKey(e){
  if(e.code==='Backquote'&&!inField(e)){e.preventDefault();e.shiftKey?toggleFloat():toggleMax();return}
- if(e.key==='Escape'){closeModal();closeWc();hideCtx();$$('.menu').forEach(x=>x.classList.remove('open'));if(inField(e))e.target.blur();return}
+ if(e.key==='Escape'){closeModal();closeWc();hideCtx();closeWe();$$('.menu').forEach(x=>x.classList.remove('open'));if(inField(e))e.target.blur();return}
  const ctrl=e.ctrlKey||e.metaKey;
  if(ctrl&&e.key.toLowerCase()==='s'){e.preventDefault();act('save');return}
  if(ctrl&&e.key.toLowerCase()==='o'){e.preventDefault();act('open');return}
@@ -1248,6 +1257,34 @@ addEventListener('mousedown',e=>{if(!e.target.closest('#wcPop')&&$('#wcPop').cla
 let ctxGi=-1;function hideCtx(){$('#ctxMenu').classList.remove('on')}
 tl.addEventListener('contextmenu',e=>{e.preventDefault();const r=tl.getBoundingClientRect();const h=hitTok(e.clientX-r.left,e.clientY-r.top);if(!h)return;ctxGi=h.gi;S.sel=h.gi;buildClipSec();drawTL();const m=$('#ctxMenu');m.classList.add('on');m.style.left=Math.min(e.clientX,innerWidth-200)+'px';m.style.top=Math.min(e.clientY,innerHeight-130)+'px'});
 $$('#ctxMenu [data-c]').forEach(d=>d.onclick=ev=>{hideCtx();const c=d.dataset.c;if(c==='color')openWordColor(ctxGi,ev.clientX,ev.clientY);else if(c==='text')editTokPrompt(ctxGi);else if(c==='clear'){pushUndo();const k=S.flat[ctxGi].tok;k.s=k.e=null;bump();updateStats()}else if(c==='play'){S.sel=ctxGi;buildClipSec();$('#cPlay')&&$('#cPlay').click()}});
+
+/* ---------- edit words from the sync strip ---------- */
+const WE={gi:-1};
+function closeWe(){$('#wePop').classList.remove('on');WE.gi=-1;$('#syncstrip').dataset.k=''}
+$('#syncstrip').addEventListener('click',e=>{const sp=e.target.closest('[data-gi]');if(!sp)return;openWe(+sp.dataset.gi,sp)});
+function openWe(gi,anchor){const f=S.flat[gi];if(!f)return;closeWc();hideCtx();WE.gi=gi;S.sel=gi;buildClipSec();updateStatus();
+ $('#weTitle').textContent=`Edit word · line ${f.li+1}`;const inp=$('#weIn');inp.value=f.tok.t;inp.dir=isRTLText(f.tok.t)?'rtl':'ltr';
+ $('#weJoin').disabled=!(f.ti>0);const pop=$('#wePop');pop.classList.add('on');const r=anchor.getBoundingClientRect();const w=pop.offsetWidth,h=pop.offsetHeight;
+ pop.style.left=clamp(r.left+r.width/2-w/2,8,innerWidth-w-8)+'px';pop.style.top=(r.bottom+8+h<innerHeight?r.bottom+8:Math.max(8,r.top-h-8))+'px';
+ $('#syncstrip').dataset.k='';setTimeout(()=>{inp.focus();inp.select()},0)}
+function afterWordEdit(msg){P.text=linesToText(P.lines);$('#lyr').value=P.text;rebuildFlat();S.sel=-1;S.syncIdx=clamp(S.syncIdx,0,S.flat.length);bump();updateStats();buildClipSec();updateStatus();drawTL();$('#syncstrip').dataset.k='';closeWe();if(msg)toast(msg+'. Ctrl+Z to undo.')}
+function weSave(){const gi=WE.gi,f=S.flat[gi];if(!f)return closeWe();const v=$('#weIn').value.trim().replace(/\s+/g,' ');if(!v)return weDelete();if(v===f.tok.t)return closeWe();
+ pushUndo();const k=f.tok,line=P.lines[f.li];const parts=parseText(v)[0]||[];if(!parts.length)return closeWe();
+ if(parts.length===1){k.t=parts[0].t;return afterWordEdit(`Word changed to "${k.t}"`)}
+ parts[parts.length-1].j=k.j;const L=parts.reduce((a,p)=>a+Math.max(1,p.t.length),0);
+ if(k.s!=null){const e=k.e!=null?k.e:k.s+0.3;let x=k.s;parts.forEach(p=>{const d=(e-k.s)*Math.max(1,p.t.length)/L;p.s=+x.toFixed(3);p.e=+(x+d-0.005).toFixed(3);x+=d})}
+ parts.forEach(p=>{if(k.cs)p.cs=k.cs;if(k.cu)p.cu=k.cu});line.splice(f.ti,1,...parts);if(S.syncIdx>gi)S.syncIdx+=parts.length-1;
+ afterWordEdit(`Split into ${parts.length} words`)}
+function weDelete(){const gi=WE.gi,f=S.flat[gi];if(!f)return closeWe();pushUndo();const k=f.tok,line=P.lines[f.li],prev=line[f.ti-1];
+ if(prev){if(prev.j)prev.j=k.j;if(k.s!=null&&prev.s!=null&&k.e!=null&&(prev.e==null||k.s-prev.e<0.35))prev.e=k.e}
+ line.splice(f.ti,1);if(!line.length)P.lines.splice(f.li,1);if(S.syncIdx>gi)S.syncIdx--;afterWordEdit(`Deleted "${k.t}"`)}
+function weJoin(){const gi=WE.gi,f=S.flat[gi];if(!f||f.ti<1)return;pushUndo();const k=f.tok,line=P.lines[f.li],prev=line[f.ti-1];
+ const val=$('#weIn').value.trim();prev.t=prev.t+(val&&!/\s/.test(val)?val:k.t);prev.j=k.j;if(k.e!=null)prev.e=k.e;else if(prev.s==null&&k.s!=null){prev.s=k.s;prev.e=k.e}
+ line.splice(f.ti,1);if(S.syncIdx>gi)S.syncIdx--;afterWordEdit(`Joined into "${prev.t}"`)}
+$('#weSave').onclick=weSave;$('#weDel').onclick=weDelete;$('#weJoin').onclick=weJoin;
+$('#weColor').onclick=()=>{const gi=WE.gi,r=$('#wePop').getBoundingClientRect();closeWe();openWordColor(gi,r.left+r.width/2,r.top+20)};
+$('#weIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();weSave()}else if(e.key==='Escape'){e.preventDefault();closeWe()}e.stopPropagation()});
+addEventListener('mousedown',e=>{if($('#wePop').classList.contains('on')&&!e.target.closest('#wePop')&&!e.target.closest('#syncstrip [data-gi]'))closeWe()},true);
 
 /* ---------- monitor modes ---------- */
 const app=$('#app'),monP=$('#monitorP');
