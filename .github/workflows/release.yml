@@ -1,0 +1,145 @@
+name: Build and release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build (e.g. v1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" -R "$GITHUB_REPOSITORY" --draft --title "Karaoke System $TAG" \
+              --notes "Karaoke System $TAG — Windows installer (.exe) and macOS (.dmg: arm64 for Apple Silicon M1–M4, x64 for Intel)."
+          fi
+
+  build:
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64
+            os: windows-latest
+            python: '3.12'
+            torch: 'torch==2.6.0 torchaudio==2.6.0'
+            torch_index: '--index-url https://download.pytorch.org/whl/cpu'
+            numpy: 'numpy<2.3'
+            ytdlp: yt-dlp.exe
+            deno: deno-x86_64-pc-windows-msvc.zip
+            builder: --win nsis --x64
+          - name: mac-arm64
+            os: macos-14
+            python: '3.12'
+            torch: 'torch==2.6.0 torchaudio==2.6.0'
+            torch_index: ''
+            numpy: 'numpy<2.3'
+            ytdlp: yt-dlp_macos
+            deno: deno-aarch64-apple-darwin.zip
+            builder: --mac dmg --arm64
+          - name: mac-x64
+            os: macos-15-intel
+            python: '3.11'
+            torch: 'torch==2.2.2 torchaudio==2.2.2'
+            torch_index: ''
+            numpy: 'numpy<2'
+            ytdlp: yt-dlp_macos
+            deno: deno-x86_64-apple-darwin.zip
+            builder: --mac dmg --x64
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Python packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ${{ matrix.torch }} ${{ matrix.torch_index }}
+          python -m pip install "${{ matrix.numpy }}" soundfile dora-search einops "julius>=0.2.3" openunmix pyyaml tqdm "pyinstaller>=6.6"
+          python -m pip install --no-deps demucs==4.0.1
+
+      - name: Download separation models
+        run: |
+          mkdir -p resources/models
+          TORCH_HOME="$PWD/resources/models" python engine/sep_cli.py --warmup
+          du -sh resources/models
+
+      - name: Build separation engine (PyInstaller)
+        run: |
+          python -m PyInstaller --noconfirm --clean --onedir --console --name ks-separate \
+            --distpath resources/engine --workpath build/pyi --specpath build/pyi \
+            --collect-submodules demucs --collect-data demucs \
+            --collect-all soundfile --collect-submodules julius --collect-submodules openunmix \
+            --collect-submodules dora --collect-data omegaconf --hidden-import yaml \
+            engine/sep_cli.py
+          du -sh resources/engine
+
+      - name: Self-test the engine
+        run: |
+          EXE=resources/engine/ks-separate/ks-separate
+          [ -f "$EXE.exe" ] && EXE="$EXE.exe"
+          TORCH_HOME="$PWD/resources/models" "$EXE" --selftest
+
+      - name: Download yt-dlp and Deno
+        run: |
+          mkdir -p resources/bin
+          if [ "${{ matrix.ytdlp }}" = "yt-dlp.exe" ]; then OUT=yt-dlp.exe; else OUT=yt-dlp; fi
+          curl -fsSL -o "resources/bin/$OUT" "https://github.com/yt-dlp/yt-dlp/releases/latest/download/${{ matrix.ytdlp }}"
+          curl -fsSL -o deno.zip "https://github.com/denoland/deno/releases/latest/download/${{ matrix.deno }}"
+          unzip -o deno.zip -d resources/bin && rm deno.zip
+          chmod +x resources/bin/* || true
+          ls -la resources/bin
+          "resources/bin/$OUT" --version
+
+      - name: Build app
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          npm install --no-audit --no-fund
+          npx electron-builder ${{ matrix.builder }} --publish never
+          ls -la dist
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          FILES=(dist/*.exe dist/*.exe.blockmap dist/latest.yml dist/*.dmg)
+          echo "Uploading: ${FILES[@]}"
+          gh release upload "$TAG" "${FILES[@]}" --clobber -R "$GITHUB_REPOSITORY"
+
+  publish:
+    needs: build
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$TAG" --draft=false --latest -R "$GITHUB_REPOSITORY"

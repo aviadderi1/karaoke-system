@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/pyi/
+resources/bin/*
+resources/engine/*
+resources/models/*
+!resources/**/.gitkeep
+__pycache__/
+*.log

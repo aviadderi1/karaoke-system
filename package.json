@@ -1,0 +1,60 @@
+{
+  "name": "karaoke-system",
+  "productName": "Karaoke System",
+  "version": "1.0.0",
+  "description": "Karaoke subtitle studio with YouTube import and vocal removal",
+  "author": "AD SOUND & SERVICE",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis --x64 --publish never",
+    "dist:mac": "electron-builder --mac dmg --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.adsound.karaokesystem",
+    "productName": "Karaoke System",
+    "copyright": "© AD SOUND & SERVICE",
+    "directories": { "output": "dist", "buildResources": "build" },
+    "files": ["main.js", "server.js", "preload.js", "splash.html", "app/**", "build/icon.png", "package.json"],
+    "extraResources": [
+      { "from": "resources/bin", "to": "bin", "filter": ["**/*"] },
+      { "from": "resources/engine", "to": "engine", "filter": ["**/*"] },
+      { "from": "resources/models", "to": "models", "filter": ["**/*"] }
+    ],
+    "publish": [{ "provider": "github", "owner": "aviadderi1", "repo": "karaoke-system", "releaseType": "release" }],
+    "afterPack": "build/afterPack.js",
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "build/icon.png",
+      "artifactName": "Karaoke-System-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Karaoke System",
+      "differentialPackage": false
+    },
+    "mac": {
+      "target": ["dmg"],
+      "category": "public.app-category.music",
+      "icon": "build/icon.png",
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "artifactName": "Karaoke-System-${version}-mac-${arch}.${ext}"
+    },
+    "dmg": { "title": "Karaoke System ${version}", "writeUpdateInfo": false }
+  }
+}
