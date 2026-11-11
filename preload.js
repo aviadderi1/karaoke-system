@@ -10,5 +10,9 @@ contextBridge.exposeInMainWorld('ksDesktop', {
   openExternal: url => ipcRenderer.invoke('ks:open-external', url),
   onSplash: cb => ipcRenderer.on('ks:splash', (_e, info) => cb(info)),
   openLyricsWeb: q => ipcRenderer.invoke('ks:lyrics-web', q),
-  onLyricsText: cb => ipcRenderer.on('ks:lyrics-text', (_e, t) => cb(t))
+  onLyricsText: cb => ipcRenderer.on('ks:lyrics-text', (_e, t) => cb(t)),
+  saveProject: (json, name, saveAs, lastPath) => ipcRenderer.invoke('ks:save-project', json, name, saveAs, lastPath),
+  onAskClose: cb => ipcRenderer.on('ks:ask-close', () => cb()),
+  closeOk: () => ipcRenderer.send('ks:close-ok'),
+  onEdit: cb => ipcRenderer.on('ks:edit', (_e, a) => cb(a))
 });

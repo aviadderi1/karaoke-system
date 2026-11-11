@@ -12,7 +12,7 @@ const SPLASH_MS = 10000;
 // keep projects and settings from the "Karaoke System" days
 app.setPath('userData', path.join(app.getPath('appData'), 'Karaoke System'));
 const isWin = process.platform === 'win32', isMac = process.platform === 'darwin';
-let splash = null, mainWin = null, port = 0, updateInfo = null;
+let splash = null, mainWin = null, port = 0, updateInfo = null, closeOk = false;
 
 if (!app.requestSingleInstanceLock()) { app.quit(); }
 app.on('second-instance', () => { if (mainWin) { if (mainWin.isMinimized()) mainWin.restore(); mainWin.focus(); } });
@@ -23,6 +23,17 @@ const log = (...a) => { try { fs.appendFileSync(path.join(app.getPath('userData'
 ipcMain.on('ks:version', e => { e.returnValue = app.getVersion(); });
 ipcMain.handle('ks:open-external', (_e, url) => { if (/^https?:\/\//.test(url)) shell.openExternal(url); });
 ipcMain.handle('ks:check-updates', () => checkUpdates(true));
+// project files: native Save dialog, remembers the file so the next Save overwrites it
+ipcMain.handle('ks:save-project', async (_e, json, name, saveAs, lastPath) => {
+  let fp = !saveAs && lastPath && fs.existsSync(path.dirname(lastPath)) ? lastPath : null;
+  if (!fp) {
+    const r = await dialog.showSaveDialog(mainWin, { title: 'Save project', defaultPath: lastPath || path.join(app.getPath('documents'), name), filters: [{ name: 'Karaoke Lab project', extensions: ['json'] }] });
+    if (r.canceled || !r.filePath) return null;
+    fp = r.filePath;
+  }
+  try { fs.writeFileSync(fp, json, 'utf8'); return fp; } catch (e) { dialog.showErrorBox('Karaoke Lab', 'Could not save the project:\n' + e.message); return null; }
+});
+ipcMain.on('ks:close-ok', () => { closeOk = true; if (mainWin) mainWin.close(); });
 ipcMain.handle('ks:install-update', () => installUpdate());
 
 // ------------------------------------------------------------ lyrics web browser
@@ -117,13 +128,18 @@ function createMain() {
   });
   mainWin.webContents.on('will-navigate', (e, url) => { if (!url.startsWith(`http://127.0.0.1:${port}`)) { e.preventDefault(); shell.openExternal(url); } });
   mainWin.on('page-title-updated', e => e.preventDefault());
+  // ask the studio whether to save before the window closes
+  mainWin.on('close', e => {
+    if (closeOk || !mainWin || mainWin.webContents.isCrashed() || mainWin.webContents.isLoading()) return;
+    e.preventDefault(); mainWin.focus(); mainWin.webContents.send('ks:ask-close');
+  });
   mainWin.loadURL(`http://127.0.0.1:${port}/`);
 }
 function macMenu() {
   if (!isMac) { Menu.setApplicationMenu(null); return; }
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: 'Karaoke Lab', submenu: [{ role: 'about' }, { label: 'Check for updates…', click: () => checkUpdates(true) }, { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { type: 'separator' }, { role: 'quit' }] },
-    { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
+    { label: 'Edit', submenu: [{ label: 'Undo', accelerator: 'CmdOrCtrl+Z', click: () => mainWin && mainWin.webContents.send('ks:edit', 'undo') }, { label: 'Redo', accelerator: 'Shift+CmdOrCtrl+Z', click: () => mainWin && mainWin.webContents.send('ks:edit', 'redo') }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
     { label: 'View', submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'togglefullscreen' }] },
     { role: 'windowMenu' }]));
 }
@@ -166,7 +182,7 @@ async function checkUpdates(manual) {
   } catch (e) { log('update check failed', e.message); if (manual) sendUpdate({ state: 'error', msg: 'Could not reach the update server.' }); }
 }
 function installUpdate() {
-  if (updateInfo && updateInfo.state === 'ready' && autoUpdater) { setImmediate(() => autoUpdater.quitAndInstall(false, true)); return; }
+  if (updateInfo && updateInfo.state === 'ready' && autoUpdater) { closeOk = true; setImmediate(() => autoUpdater.quitAndInstall(false, true)); return; }
   if (updateInfo && updateInfo.url) shell.openExternal(updateInfo.url);
 }
 
