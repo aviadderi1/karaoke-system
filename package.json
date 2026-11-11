@@ -1,7 +1,7 @@
 {
   "name": "karaoke-system",
   "productName": "Karaoke Lab",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "description": "Karaoke subtitle studio with YouTube import and vocal removal.",
   "author": "AD SOUND & SERVICE",
   "license": "UNLICENSED",
@@ -13,7 +13,9 @@
     "dist:mac": "electron-builder --mac dmg --publish never"
   },
   "dependencies": {
-    "electron-updater": "^6.3.9"
+    "castv2-client": "^1.2.0",
+    "electron-updater": "^6.3.9",
+    "multicast-dns": "^7.2.5"
   },
   "devDependencies": {
     "electron": "^33.2.1",
@@ -23,17 +25,65 @@
     "appId": "com.adsound.karaokesystem",
     "productName": "Karaoke Lab",
     "copyright": "© AD SOUND & SERVICE",
-    "directories": { "output": "dist", "buildResources": "build" },
-    "files": ["main.js", "server.js", "preload.js", "lyrics-preload.js", "lyrics-browser.html", "splash.html", "app/**", "build/icon.png", "build/splash.jpg", "build/letters_mask.png", "package.json"],
-    "extraResources": [
-      { "from": "resources/bin", "to": "bin", "filter": ["**/*"] },
-      { "from": "resources/engine", "to": "engine", "filter": ["**/*"] },
-      { "from": "resources/models", "to": "models", "filter": ["**/*"] }
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "cast.js",
+      "server.js",
+      "preload.js",
+      "lyrics-preload.js",
+      "lyrics-browser.html",
+      "splash.html",
+      "app/**",
+      "build/icon.png",
+      "build/splash.jpg",
+      "build/letters_mask.png",
+      "package.json"
     ],
-    "publish": [{ "provider": "github", "owner": "aviadderi1", "repo": "karaoke-system", "releaseType": "release" }],
+    "extraResources": [
+      {
+        "from": "resources/bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "resources/engine",
+        "to": "engine",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "resources/models",
+        "to": "models",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "aviadderi1",
+        "repo": "karaoke-system",
+        "releaseType": "release"
+      }
+    ],
     "afterPack": "build/afterPack.js",
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "build/icon.png",
       "artifactName": "Karaoke-Lab-Setup-${version}.${ext}"
     },
@@ -47,7 +97,9 @@
       "differentialPackage": false
     },
     "mac": {
-      "target": ["dmg"],
+      "target": [
+        "dmg"
+      ],
       "category": "public.app-category.music",
       "icon": "build/icon.png",
       "identity": null,
@@ -55,6 +107,9 @@
       "gatekeeperAssess": false,
       "artifactName": "Karaoke-Lab-${version}-mac-${arch}.${ext}"
     },
-    "dmg": { "title": "Karaoke Lab ${version}", "writeUpdateInfo": false }
+    "dmg": {
+      "title": "Karaoke Lab ${version}",
+      "writeUpdateInfo": false
+    }
   }
 }

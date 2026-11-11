@@ -14,5 +14,11 @@ contextBridge.exposeInMainWorld('ksDesktop', {
   saveProject: (json, name, saveAs, lastPath) => ipcRenderer.invoke('ks:save-project', json, name, saveAs, lastPath),
   onAskClose: cb => ipcRenderer.on('ks:ask-close', () => cb()),
   closeOk: () => ipcRenderer.send('ks:close-ok'),
-  onEdit: cb => ipcRenderer.on('ks:edit', (_e, a) => cb(a))
+  onEdit: cb => ipcRenderer.on('ks:edit', (_e, a) => cb(a)),
+  castDiscover: () => ipcRenderer.invoke('ks:cast-discover'),
+  castStart: dev => ipcRenderer.invoke('ks:cast-start', dev),
+  castStop: () => ipcRenderer.invoke('ks:cast-stop'),
+  castChunk: buf => ipcRenderer.send('ks:cast-chunk', buf),
+  onCastRestart: cb => ipcRenderer.on('ks:cast-restart', () => cb()),
+  onCastState: cb => ipcRenderer.on('ks:cast-state', (_e, st) => cb(st))
 });

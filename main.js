@@ -6,6 +6,8 @@ const fs = require('fs');
 const https = require('https');
 const { spawn } = require('child_process');
 const { createServer, listen } = require('./server');
+const cast = require('./cast');
+global.__ksCast = cast;
 
 const REPO = { owner: 'aviadderi1', repo: 'karaoke-system' };
 const SPLASH_MS = 10000;
@@ -34,6 +36,15 @@ ipcMain.handle('ks:save-project', async (_e, json, name, saveAs, lastPath) => {
   try { fs.writeFileSync(fp, json, 'utf8'); return fp; } catch (e) { dialog.showErrorBox('Karaoke Lab', 'Could not save the project:\n' + e.message); return null; }
 });
 ipcMain.on('ks:close-ok', () => { closeOk = true; if (mainWin) mainWin.close(); });
+// Chromecast
+ipcMain.handle('ks:cast-discover', async () => { try { return await cast.discover(); } catch (e) { log('cast discover', e.message); return []; } });
+ipcMain.handle('ks:cast-start', async (_e, dev) => {
+  try { return await cast.start(dev, { onRestart: () => mainWin && mainWin.webContents.send('ks:cast-restart'), onState: st => mainWin && mainWin.webContents.send('ks:cast-state', st) }); }
+  catch (e) { log('cast start', e.message); return { ok: false, msg: e.message }; }
+});
+ipcMain.handle('ks:cast-stop', () => cast.stop());
+ipcMain.on('ks:cast-chunk', (_e, buf) => cast.chunk(buf));
+app.on('before-quit', () => { try { cast.stop(true); } catch (e) {} });
 ipcMain.handle('ks:install-update', () => installUpdate());
 
 // ------------------------------------------------------------ lyrics web browser
