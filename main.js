@@ -7,6 +7,7 @@ const https = require('https');
 const { spawn } = require('child_process');
 const { createServer, listen } = require('./server');
 const cast = require('./cast');
+const { execFile } = require('child_process');
 global.__ksCast = cast;
 
 const REPO = { owner: 'aviadderi1', repo: 'karaoke-system' };
@@ -49,6 +50,16 @@ ipcMain.handle('ks:cast-start', async (_e, dev) => {
   catch (e) { log('cast start', e.message); return { ok: false, msg: e.message }; }
 });
 ipcMain.handle('ks:cast-stop', () => cast.stop());
+// Windows: remove block rules a dismissed firewall prompt may have left, and allow Karaoke Lab on home networks
+ipcMain.handle('ks:fix-firewall', () => new Promise(resolve => {
+  if (!isWin) return resolve({ ok: false, msg: 'Only needed on Windows.' });
+  const exe = process.execPath.replace(/'/g, "''");
+  const cmd = `netsh advfirewall firewall delete rule name=all program="${exe}" & ` +
+    `netsh advfirewall firewall add rule name="Karaoke Lab" dir=in action=allow program="${exe}" enable=yes profile=private,domain,public protocol=TCP & ` +
+    `netsh advfirewall firewall add rule name="Karaoke Lab" dir=in action=allow program="${exe}" enable=yes profile=private,domain,public protocol=UDP`;
+  const ps = `Start-Process -FilePath cmd.exe -ArgumentList '/c ${cmd.replace(/'/g, "''")}' -Verb RunAs -WindowStyle Hidden -Wait`;
+  execFile('powershell.exe', ['-NoProfile', '-Command', ps], { windowsHide: true }, err => resolve(err ? { ok: false, msg: 'Windows did not allow the change.' } : { ok: true }));
+}));
 ipcMain.on('ks:cast-chunk', (_e, buf) => cast.chunk(buf));
 app.on('before-quit', () => { try { cast.stop(true); } catch (e) {} });
 ipcMain.handle('ks:install-update', () => installUpdate());

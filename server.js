@@ -105,6 +105,7 @@ function createServer(opts) {
       if (u.pathname.startsWith('/job/')) return send(res, 200, jobs.get(u.pathname.slice(5)) || { state: 'missing', msg: 'Unknown job' });
       if (u.pathname.startsWith('/file/')) return sendFile(res, path.join(workDir, path.basename(decodeURIComponent(u.pathname.slice(6)))));
       if (u.pathname.startsWith('/assets/')) return sendFile(res, path.join(appDir, path.basename(u.pathname)));
+      if (u.pathname === '/icons/kl.png') return sendFile(res, path.join(appDir, 'icons', 'kl.png'));
       if (u.pathname === '/icons/tabler-icons.min.css') return sendFile(res, path.join(appDir, 'icons', 'tabler-icons.min.css'));
       if (u.pathname.startsWith('/icons/fonts/')) return sendFile(res, path.join(appDir, 'icons', 'fonts', path.basename(decodeURIComponent(u.pathname))));
       if (u.pathname.startsWith('/manual/')) return sendFile(res, path.join(appDir, 'manual', path.basename(decodeURIComponent(u.pathname))));

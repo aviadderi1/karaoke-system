@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('ksDesktop', {
   castDiscover: () => ipcRenderer.invoke('ks:cast-discover'),
   castStart: dev => ipcRenderer.invoke('ks:cast-start', dev),
   castStop: () => ipcRenderer.invoke('ks:cast-stop'),
+  fixFirewall: () => ipcRenderer.invoke('ks:fix-firewall'),
   castChunk: buf => ipcRenderer.send('ks:cast-chunk', buf),
   onCastRestart: cb => ipcRenderer.on('ks:cast-restart', () => cb()),
   onCastState: cb => ipcRenderer.on('ks:cast-state', (_e, st) => cb(st))

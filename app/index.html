@@ -106,6 +106,12 @@ input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;bac
 #castMenu .dev{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:4px;cursor:pointer;color:#ddd}#castMenu .dev:hover{background:#2f2f2f;color:#fff}#castMenu .dev i{font-size:16px;color:#9a9a9a}
 #castMenu .dev.on{background:#24384f;color:#fff}#castMenu .dev.on i{color:#5fb0ff}#castMenu .note{color:#8a8a8a;padding:6px 8px;line-height:1.4}#castMenu label{display:flex;align-items:center;gap:6px;padding:6px 8px;color:#bbb;border-top:1px solid #333;margin-top:4px}
 #castBtn.on{color:#5fb0ff}
+#updCard{position:fixed;right:18px;top:64px;z-index:70;width:330px;background:#262626;border:1px solid #3d3d3d;border-radius:8px;box-shadow:0 14px 40px rgba(0,0,0,.6);padding:14px 16px;display:none;font-size:12.5px;color:#ddd}
+#updCard.on{display:block;animation:ucIn .25s ease-out}@keyframes ucIn{from{opacity:0;transform:translateY(-8px)}}
+#updCard .ucH{display:flex;gap:10px;align-items:center}#updCard .ucH img{width:34px;height:34px;border-radius:8px}#updCard .ucH b{color:#fff;font-size:13.5px}
+#updCard .ucBar{height:4px;background:#3a3a3a;border-radius:2px;margin:12px 0 6px;overflow:hidden}#updCard .ucBar i{display:block;height:100%;background:var(--acc);transition:width .3s}
+#updCard .ucBtns{display:flex;justify-content:flex-end;gap:6px;margin-top:12px}
+#castMenu .ipRow{display:flex;gap:6px;padding:6px 6px 4px;border-top:1px solid #333;margin-top:4px}#castMenu .ipRow input{flex:1;min-width:0;height:26px;font-size:12px}#castMenu .ipRow button{height:26px}
 /* monitor */
 #monitorP .pbody{padding:0;background:#0d0d0d}
 #monwrap{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;position:relative;overflow:hidden}
@@ -455,7 +461,7 @@ input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;bac
  <div id="status"><span id="stTool">Selection tool</span><span id="stSync"></span><span id="stSel"></span><span id="updBox" style="display:none;margin-left:auto"></span><span class="sp" id="brand">AD SOUND &amp; SERVICE · Karaoke Lab</span></div>
 </div>
 <div id="toast"></div>
-<div id="castMenu"></div><div id="modal"><div class="box" id="modalBox"></div></div>
+<div id="castMenu"></div><div id="updCard" role="status" aria-live="polite"></div><div id="modal"><div class="box" id="modalBox"></div></div>
 <div id="drop">Drop files to import</div>
 <div id="wcPop">
  <div class="flexr" style="justify-content:space-between;margin-bottom:8px"><span style="color:#fff;font-size:13px" id="wcTitle">Word color</span><button class="ghost" id="wcX" style="padding:2px 4px"><i class="ti ti-x"></i></button></div>
@@ -1535,10 +1541,17 @@ function syncVoc(){if(!S.vocBuf||!audV.src)return;const m=master();if(m!==aud){i
 setTimeout(()=>helperStatus(true),800);
 if(DESKTOP){$('#sepHint').textContent='Runs on the built-in engine on this computer. Nothing is uploaded.';
  const ub=$('#updBox');
+ const card=$('#updCard');let updLater=false,updWant=false;
+ const showCard=html=>{if(updLater)return;card.innerHTML=html;card.classList.add('on');const x=card.querySelector('#ucLater');if(x)x.onclick=()=>{updLater=true;card.classList.remove('on')};const g=card.querySelector('#ucGo');if(g)g.onclick=()=>{updWant=true;if(g.dataset.act==='install'||g.dataset.act==='open'){ksDesktop.installUpdate();if(g.dataset.act==='open'){card.classList.remove('on');toast('The new version is downloading in your browser. Open it and drag Karaoke Lab to Applications.',7000)}}else{g.disabled=true;g.innerHTML='<i class="ti ti-loader-2"></i>Installs when the download finishes'}}};
+ const head=v=>`<div class="ucH"><img src="icons/kl.png" onerror="this.remove()" alt=""><div><b>Update available</b><div class="small muted">Karaoke Lab ${v} · you have ${ksDesktop.version}</div></div></div>`;
  ksDesktop.onUpdate(u=>{if(!u)return;ub.style.display='';
-  if(u.state==='downloading'){ub.innerHTML=`<span style="color:var(--acc)"><i class="ti ti-download"></i> Downloading update ${u.version||''}${u.percent?' · '+u.percent+'%':''}</span>`}
-  else if(u.state==='ready'){ub.innerHTML=`<button class="pri" id="updGo" style="height:18px;padding:0 8px;font-size:11px"><i class="ti ti-refresh"></i>Restart to update to ${u.version}</button>`;$('#updGo').onclick=()=>ksDesktop.installUpdate();toast(`Version ${u.version} is ready. Restart to update.`,5000)}
-  else if(u.state==='available'){ub.innerHTML=`<button class="pri" id="updGo" style="height:18px;padding:0 8px;font-size:11px"><i class="ti ti-download"></i>Download version ${u.version}</button>`;$('#updGo').onclick=()=>ksDesktop.installUpdate();toast(`Karaoke Lab ${u.version} is available`,5000)}
+  if(u.state==='downloading'){ub.innerHTML=`<span style="color:var(--acc)"><i class="ti ti-download"></i> Downloading update ${u.version||''}${u.percent?' · '+u.percent+'%':''}</span>`;
+   showCard(head(u.version||'')+`<div class="ucBar"><i style="width:${u.percent||0}%"></i></div><div class="small muted">Downloading in the background… ${u.percent||0}%</div><div class="ucBtns"><button id="ucLater">Later</button><button class="pri" id="ucGo" ${updWant?'disabled':''}>${updWant?'<i class="ti ti-loader-2"></i>Installs when the download finishes':'<i class="ti ti-download"></i>Update now'}</button></div>`)}
+  else if(u.state==='ready'){ub.innerHTML=`<button class="pri" id="updGo" style="height:18px;padding:0 8px;font-size:11px"><i class="ti ti-refresh"></i>Restart to update to ${u.version}</button>`;$('#updGo').onclick=()=>ksDesktop.installUpdate();
+   if(updWant){ksDesktop.installUpdate();return}
+   showCard(head(u.version)+`<div class="small" style="margin:8px 0 2px">The update is ready. Karaoke Lab restarts to install it, and your work is kept.</div><div class="ucBtns"><button id="ucLater">Later</button><button class="pri" id="ucGo" data-act="install"><i class="ti ti-refresh"></i>Update now</button></div>`)}
+  else if(u.state==='available'){ub.innerHTML=`<button class="pri" id="updGo" style="height:18px;padding:0 8px;font-size:11px"><i class="ti ti-download"></i>Download version ${u.version}</button>`;$('#updGo').onclick=()=>ksDesktop.installUpdate();
+   showCard(head(u.version)+`<div class="small" style="margin:8px 0 2px">Click Update now to download the new version, then open it and drag Karaoke Lab to Applications.</div><div class="ucBtns"><button id="ucLater">Later</button><button class="pri" id="ucGo" data-act="open"><i class="ti ti-download"></i>Update now</button></div>`)}
   else if(u.state==='none'){ub.style.display='none';toast(`You're on the latest version (${u.version})`)}
   else if(u.state==='error'){ub.style.display='none';toast('Update check failed: '+(u.msg||''),5000)}});
 }
@@ -1811,6 +1824,7 @@ document.addEventListener('input',e=>{if(e.target.type==='range')rangeFill(e.tar
 setInterval(()=>document.querySelectorAll('input[type=range]').forEach(rangeFill),400);
 
 /* ---------- Chromecast ---------- */
+var IS_WIN=(window.ksDesktop&&ksDesktop.platform==="win32")||/Win/i.test(navigator.platform),IS_MAC=(window.ksDesktop&&ksDesktop.platform==="darwin")||/Mac/i.test(navigator.platform);
 var CAST={on:false,dev:null,cv:null,cx:null,rec:null,mute:true,devs:[],busy:false};
 function castStartRec(){if(!CAST.on)return;try{if(CAST.rec&&CAST.rec.state!=='inactive')CAST.rec.stop()}catch(e){}
  ensureAudio();if(!CAST.cv){CAST.cv=document.createElement('canvas');CAST.cv.width=1280;CAST.cv.height=720;CAST.cx=CAST.cv.getContext('2d')}
@@ -1828,19 +1842,27 @@ function hideCastMenu(){$('#castMenu').classList.remove('on')}
 function castMenuRender(note){const m=$('#castMenu');
  m.innerHTML=`<div class="hd"><i class="ti ti-cast"></i>Cast to TV</div>`+(CAST.on&&CAST.dev?`<div class="dev on" data-stop="1"><i class="ti ti-device-tv"></i><span style="flex:1">${esc(CAST.dev.name)}<div class="small muted">Casting · click to stop</div></span><i class="ti ti-x"></i></div>`:'')+
   CAST.devs.filter(d=>!(CAST.dev&&d.id===CAST.dev.id)).map((d,i)=>`<div class="dev" data-i="${CAST.devs.indexOf(d)}"><i class="ti ti-device-tv"></i><span style="flex:1">${esc(d.name)}${d.model?`<div class="small muted">${esc(d.model)}</div>`:''}</span></div>`).join('')+
-  (note?`<div class="note">${note}</div>`:'')+`<label><input type="checkbox" id="castMute" ${CAST.mute?'checked':''}> Mute this computer while casting</label>`;
+  (note?`<div class="note">${note}</div>`:'')+
+  `<div class="ipRow"><input id="castIp" placeholder="TV IP address, e.g. 192.168.1.40" spellcheck="false"><button id="castIpGo">Connect</button></div>`+
+  (IS_WIN?`<div class="dev" id="castFw"><i class="ti ti-shield-check"></i><span style="flex:1">Allow Karaoke Lab in Windows Firewall<div class="small muted">Fixes TVs not found or not playing. Windows asks for permission.</div></span></div>`:'')+
+  `<div class="dev" id="castAgain"><i class="ti ti-refresh"></i><span style="flex:1">Search again</span></div>`+
+  `<label><input type="checkbox" id="castMute" ${CAST.mute?'checked':''}> Mute this computer while casting</label>`;
  m.querySelectorAll('.dev[data-i]').forEach(el=>el.onclick=()=>castConnect(CAST.devs[+el.dataset.i]));const st=m.querySelector('[data-stop]');if(st)st.onclick=()=>castStop();
- $('#castMute').onchange=e=>{CAST.mute=e.target.checked;castApplyMute()}}
+ $('#castMute').onchange=e=>{CAST.mute=e.target.checked;castApplyMute()};
+ const goIp=()=>{const ip=$('#castIp').value.trim();if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip))return toast('Type the TV\'s IP address, like 192.168.1.40. You can find it in the TV\'s network settings or the Google Home app.',5000);try{localStorage.setItem('kl_castip',ip)}catch(e){}castConnect({id:'ip-'+ip,name:'TV at '+ip,host:ip,port:8009})};
+ $('#castIpGo').onclick=goIp;$('#castIp').onkeydown=e=>{e.stopPropagation();if(e.key==='Enter')goIp()};try{const ip=localStorage.getItem('kl_castip');if(ip)$('#castIp').value=ip}catch(e){}
+ $('#castAgain').onclick=()=>{hideCastMenu();openCastMenu()};
+ const fw=$('#castFw');if(fw)fw.onclick=async()=>{castMenuRender('Waiting for Windows to allow the change…');const r=await ksDesktop.fixFirewall();CAST.devs=[];hideCastMenu();if(r&&r.ok){toast('Windows Firewall updated. Searching again…',3000);setTimeout(openCastMenu,400)}else toast((r&&r.msg)||'The firewall change was cancelled.',4000)}}
 async function openCastMenu(){const m=$('#castMenu');if(m.classList.contains('on'))return hideCastMenu();
  if(!(window.ksDesktop&&ksDesktop.castDiscover)){castMenuRender('Casting works in the Karaoke Lab desktop app.');}
  else{castMenuRender('<i class="ti ti-loader-2"></i> Looking for TVs on your network…')}
  const b=$('#castBtn').getBoundingClientRect();m.classList.add('on');m.style.left=Math.max(8,Math.min(innerWidth-300,b.right-280))+'px';m.style.top=(b.bottom+6)+'px';
  if(!(window.ksDesktop&&ksDesktop.castDiscover))return;
  CAST.devs=await ksDesktop.castDiscover();if(!m.classList.contains('on'))return;
- castMenuRender(CAST.devs.length?'':'No Chromecast found. Check that the TV is on and on the same Wi-Fi as this computer. On Windows, allow Karaoke Lab through the firewall when asked.')}
+ castMenuRender(CAST.devs.length?'':'No Chromecast found. Check that the TV is on and on the same Wi-Fi as this computer.'+(IS_WIN?' If it still isn\'t found, click "Allow Karaoke Lab in Windows Firewall" below, or type the TV\'s IP address.':IS_MAC?' On a Mac, allow Karaoke Lab in System Settings → Privacy & Security → Local Network, or type the TV\'s IP address.':' You can also type the TV\'s IP address.'))}
 $('#castBtn').onclick=e=>{e.stopPropagation();openCastMenu()};
 document.addEventListener('mousedown',e=>{if(!e.target.closest('#castMenu')&&!e.target.closest('#castBtn'))hideCastMenu()});
-if(window.ksDesktop&&ksDesktop.onCastRestart){ksDesktop.onCastRestart(()=>castStartRec());ksDesktop.onCastState(st=>{if(st.state==='error'&&CAST.on){toast('Cast error: '+st.msg,5000)}if(st.playerState==='IDLE'&&CAST.on){}})}
+if(window.ksDesktop&&ksDesktop.onCastRestart){ksDesktop.onCastRestart(()=>castStartRec());ksDesktop.onCastState(st=>{if(st.state==='error'&&CAST.on){toast('Cast error: '+st.msg,5000)}if(st.state==='blocked'&&CAST.on){toast(`${st.device} connected but can't receive the video from this computer.`+(IS_WIN?' Open the Cast menu and click "Allow Karaoke Lab in Windows Firewall".':' Check the firewall or Local Network permission.'),9000);const m=$('#castMenu');castMenuRender(`${esc(st.device)} can't reach this computer. Usually a firewall is blocking it.`);m.classList.add('on');const b=$('#castBtn').getBoundingClientRect();m.style.left=Math.max(8,Math.min(innerWidth-300,b.right-280))+'px';m.style.top=(b.bottom+6)+'px'}})}
 
 /* ---------- LED level meter (L / R) ---------- */
 const LED={buf:new Float32Array(1024),lv:[-90,-90],pk:[-90,-90],pkT:[0,0],last:0,N:16};
