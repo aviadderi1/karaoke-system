@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('ksDesktop', {
   onAskClose: cb => ipcRenderer.on('ks:ask-close', () => cb()),
   closeOk: () => ipcRenderer.send('ks:close-ok'),
   onEdit: cb => ipcRenderer.on('ks:edit', (_e, a) => cb(a)),
+  saveManual: () => ipcRenderer.invoke('ks:manual'),
   castDiscover: () => ipcRenderer.invoke('ks:cast-discover'),
   castStart: dev => ipcRenderer.invoke('ks:cast-start', dev),
   castStop: () => ipcRenderer.invoke('ks:cast-stop'),

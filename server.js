@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const { spawn } = require('child_process');
 
 const MODELS = { htdemucs_ft: 4, htdemucs: 1 };
-const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.woff2': 'font/woff2', '.m4a': 'audio/mp4', '.mp4': 'audio/mp4', '.webm': 'audio/webm',
+const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.woff2': 'font/woff2', '.pdf': 'application/pdf', '.m4a': 'audio/mp4', '.mp4': 'audio/mp4', '.webm': 'audio/webm',
   '.opus': 'audio/ogg', '.ogg': 'audio/ogg', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.png': 'image/png' };
 
 function createServer(opts) {
@@ -107,6 +107,7 @@ function createServer(opts) {
       if (u.pathname.startsWith('/assets/')) return sendFile(res, path.join(appDir, path.basename(u.pathname)));
       if (u.pathname === '/icons/tabler-icons.min.css') return sendFile(res, path.join(appDir, 'icons', 'tabler-icons.min.css'));
       if (u.pathname.startsWith('/icons/fonts/')) return sendFile(res, path.join(appDir, 'icons', 'fonts', path.basename(decodeURIComponent(u.pathname))));
+      if (u.pathname.startsWith('/manual/')) return sendFile(res, path.join(appDir, 'manual', path.basename(decodeURIComponent(u.pathname))));
       if (u.pathname.startsWith('/fonts/')) return sendFile(res, path.join(appDir, 'fonts', path.basename(decodeURIComponent(u.pathname))));
       return send(res, 404, { error: 'not found' });
     }

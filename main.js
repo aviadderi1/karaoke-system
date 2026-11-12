@@ -35,6 +35,12 @@ ipcMain.handle('ks:save-project', async (_e, json, name, saveAs, lastPath) => {
   }
   try { fs.writeFileSync(fp, json, 'utf8'); return fp; } catch (e) { dialog.showErrorBox('Karaoke Lab', 'Could not save the project:\n' + e.message); return null; }
 });
+ipcMain.handle('ks:manual', async () => {
+  const src = path.join(__dirname, 'app', 'manual', 'Karaoke-Lab-User-Manual.pdf');
+  const r = await dialog.showSaveDialog(mainWin, { title: 'Save user manual', defaultPath: path.join(app.getPath('downloads'), 'Karaoke-Lab-User-Manual.pdf'), filters: [{ name: 'PDF', extensions: ['pdf'] }] });
+  if (r.canceled || !r.filePath) return null;
+  try { fs.writeFileSync(r.filePath, fs.readFileSync(src)); shell.openPath(r.filePath); return r.filePath; } catch (e) { dialog.showErrorBox('Karaoke Lab', 'Could not save the manual:\n' + e.message); return null; }
+});
 ipcMain.on('ks:close-ok', () => { closeOk = true; if (mainWin) mainWin.close(); });
 // Chromecast
 ipcMain.handle('ks:cast-discover', async () => { try { return await cast.discover(); } catch (e) { log('cast discover', e.message); return []; } });

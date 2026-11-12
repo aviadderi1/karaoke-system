@@ -4,9 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Karaoke Lab</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Montserrat:wght@700;900&family=Anton&family=Oswald:wght@500;700&family=Bebas+Neue&family=Rubik:wght@500;700;900&family=Heebo:wght@500;800;900&family=Assistant:wght@700;800&family=Secular+One&family=Poppins:wght@700;900&family=Roboto:wght@700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/latin-fonts.css">
 <link rel="stylesheet" href="fonts/hebrew-fonts.css">
 <link href="icons/tabler-icons.min.css" rel="stylesheet">
 <style>
@@ -298,7 +296,7 @@ input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;bac
    <div data-a="resetLayout">Reset timeline height</div>
   </div></div>
   <div class="menu"><span>Help</span><div class="drop">
-   <div data-a="keys">Keyboard shortcuts<kbd>F1</kbd></div>
+   <div data-a="manual">User manual (PDF)…</div><div data-a="keys">Keyboard shortcuts<kbd>F1</kbd></div>
    <div data-a="checkUpd">Check for updates…</div>
    <div data-a="about">About Karaoke Lab</div>
   </div></div>
@@ -1243,6 +1241,7 @@ function act(a){switch(a){
  case 'expAss':exportASS();break;case 'expLrc':exportLRC();break;case 'render':workspace('export');renderVideo();break;
  case 'duetOn':if(!P.duetOn){pushUndo();syncL();P.duetOn=true;bump();buildTrackHdr();markLyrTab();switchLyr(2);toast('Lyrics 2 added. Type the duet singer\'s lyrics, then tap-sync them.',3500)}break;
  case 'duetOff':if(P.duetOn&&confirm('Remove the Lyrics 2 track and its words?')){pushUndo();switchLyr(1,true);syncL();P.duetOn=false;P.L[1]={lines:[],text:''};bump();buildTrackHdr();markLyrTab();drawTL()}break;
+ case 'manual':if(window.ksDesktop&&ksDesktop.saveManual){ksDesktop.saveManual().then(fp=>{if(fp)toast('User manual saved: '+fp.split(/[\\/]/).pop())})}else{const a=document.createElement('a');a.href='manual/Karaoke-Lab-User-Manual.pdf';a.download='Karaoke-Lab-User-Manual.pdf';document.body.appendChild(a);a.click();a.remove()}break;
  case 'undo':undo();break;case 'redo':redo();break;
  case 'clearSel':if(S.msel&&S.msel.size){pushUndo();S.msel.forEach(gi=>{const k=S.flat[gi]&&S.flat[gi].tok;if(k)k.s=k.e=null});S.msel.clear();bump();updateStats()}else if(S.sel>=0){pushUndo();const k=S.flat[S.sel].tok;k.s=k.e=null;bump();updateStats()}break;
  case 'clearFrom':{pushUndo();const t=curT();S.flat.forEach(f=>{if(f.tok.s!=null&&f.tok.s>=t)f.tok.s=f.tok.e=null});bump();updateStats();break}

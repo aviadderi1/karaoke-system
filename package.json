@@ -85,7 +85,7 @@
         }
       ],
       "icon": "build/icon.png",
-      "artifactName": "Karaoke-Lab-Setup-${version}.${ext}"
+      "artifactName": "Karaoke-Lab-Setup.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -105,7 +105,7 @@
       "identity": null,
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
-      "artifactName": "Karaoke-Lab-${version}-mac-${arch}.${ext}"
+      "artifactName": "Karaoke-Lab-mac-${arch}.${ext}"
     },
     "dmg": {
       "title": "Karaoke Lab ${version}",
