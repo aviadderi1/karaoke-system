@@ -92,10 +92,43 @@ jobs:
           python -m pip install "${{ matrix.numpy }}" soundfile dora-search einops "julius>=0.2.3" openunmix pyyaml tqdm "pyinstaller>=6.6"
           python -m pip install --no-deps demucs==4.0.1
 
+      - name: Restore separation models from cache
+        id: models
+        uses: actions/cache@v4
+        with:
+          path: resources/models
+          key: demucs-models-${{ runner.os }}-v1
+
       - name: Download separation models
+        if: steps.models.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p resources/models
-          TORCH_HOME="$PWD/resources/models" python engine/sep_cli.py --warmup
+          if TORCH_HOME="$PWD/resources/models" python engine/sep_cli.py --warmup; then
+            echo "Models downloaded from the Demucs server"
+          else
+            # The Demucs download server can be unreachable (e.g. an expired certificate).
+            # Take the same model files from the previous Karaoke Lab release instead.
+            echo "Demucs server failed, taking the models from the previous release"
+            rm -rf resources/models && mkdir -p resources/models
+            PREV=$(gh release list -R "$GITHUB_REPOSITORY" --limit 20 --json tagName,isDraft -q '[.[]|select(.isDraft==false)][0].tagName')
+            echo "Using models from $PREV"
+            mkdir -p /tmp/prev && cd /tmp/prev
+            if [ "$RUNNER_OS" = "macOS" ]; then
+              gh release download "$PREV" -R "$GITHUB_REPOSITORY" -p '*arm64.dmg' -O prev.dmg
+              hdiutil attach prev.dmg -nobrowse -readonly -mountpoint /tmp/prevmnt
+              cp -R "/tmp/prevmnt/Karaoke Lab.app/Contents/Resources/models/." "$GITHUB_WORKSPACE/resources/models/"
+              hdiutil detach /tmp/prevmnt
+            else
+              gh release download "$PREV" -R "$GITHUB_REPOSITORY" -p '*.exe' -O prev.exe
+              7z x -y prev.exe -ox >/dev/null
+              7z x -y "$(ls x/\$PLUGINSDIR/app-64.7z)" -oapp >/dev/null
+              cp -R app/resources/models/. "$GITHUB_WORKSPACE/resources/models/"
+            fi
+            cd "$GITHUB_WORKSPACE"
+            TORCH_HOME="$PWD/resources/models" python engine/sep_cli.py --warmup
+          fi
           du -sh resources/models
 
       - name: Build separation engine (PyInstaller)
