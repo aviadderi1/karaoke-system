@@ -11,7 +11,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.woff2'
   '.opus': 'audio/ogg', '.ogg': 'audio/ogg', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.png': 'image/png' };
 
 function createServer(opts) {
-  const { appDir, workDir, ytdlpPath, denoDir, enginePath, modelsDir, version, log } = opts;
+  const { appDir, workDir, ytdlpPath, denoDir, enginePath, modelsDir, alignDir, version, log } = opts;
   fs.mkdirSync(workDir, { recursive: true });
   cleanup(workDir);
   const jobs = new Map();
@@ -86,6 +86,40 @@ function createServer(opts) {
     }));
   }
 
+  // precise auto-sync: forced alignment of the lyrics (engine/align.py)
+  function runAlign(j, wav, lyr, vocals) {
+    sepQueue = sepQueue.then(() => new Promise(resolve => {
+      if (j.state === 'cancelled') return resolve();
+      if (!enginePath || !fs.existsSync(enginePath)) { Object.assign(j, { state: 'error', msg: 'The timing engine is missing from this installation.' }); return resolve(); }
+      const outFile = path.join(workDir, j.id + '_align.json');
+      const args = ['--align', wav, '--lyrics', lyr, '--out', outFile];
+      if (vocals) args.push('--vocals');
+      if (alignDir) args.push('--models', alignDir);
+      j.msg = 'Starting the timing engine';
+      const p = spawn(enginePath, args, { env: toolEnv(), windowsHide: true });
+      procs.set(j.id, p);
+      let err = '';
+      lines(p.stdout, l => {
+        let m;
+        if ((m = l.match(/^S (.*)/))) j.msg = m[1];
+        else if ((m = l.match(/^Q ([\d.]+)/))) j.progress = Math.min(0.99, +m[1]);
+        else if ((m = l.match(/^ERR (.*)/))) err = m[1];
+      });
+      lines(p.stderr, l => { if (l.trim() && !err) log && log('[align] ' + l); });
+      p.on('error', e => { Object.assign(j, { state: 'error', msg: String(e.message || e) }); resolve(); });
+      p.on('close', code => {
+        procs.delete(j.id); fs.rm(wav, { force: true }, () => { }); fs.rm(lyr, { force: true }, () => { });
+        if (j.state === 'cancelled') return resolve();
+        let result = null;
+        try { result = JSON.parse(fs.readFileSync(outFile, 'utf8')); } catch (e) { }
+        fs.rm(outFile, { force: true }, () => { });
+        if (code !== 0 || !result) { Object.assign(j, { state: 'error', msg: err || `Timing failed (code ${code})` }); return resolve(); }
+        Object.assign(j, { state: 'done', progress: 1, msg: 'Done', result });
+        resolve();
+      });
+    }));
+  }
+
   function send(res, code, obj) { const b = Buffer.from(JSON.stringify(obj)); res.writeHead(code, { 'Content-Type': 'application/json', 'Content-Length': b.length, 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' }); res.end(b); }
   function sendFile(res, p) {
     fs.stat(p, (e, st) => {
@@ -101,7 +135,7 @@ function createServer(opts) {
     if (req.method === 'OPTIONS') { res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': '*' }); return res.end(); }
     if (req.method === 'GET') {
       if (u.pathname === '/' || u.pathname === '/index.html') return sendFile(res, path.join(appDir, 'index.html'));
-      if (u.pathname === '/status') return send(res, 200, { ok: true, desktop: true, version, device: 'cpu', ytdlp: !!(ytdlpPath && fs.existsSync(ytdlpPath)), engine: !!(enginePath && fs.existsSync(enginePath)) });
+      if (u.pathname === '/status') return send(res, 200, { ok: true, desktop: true, version, device: 'cpu', ytdlp: !!(ytdlpPath && fs.existsSync(ytdlpPath)), engine: !!(enginePath && fs.existsSync(enginePath)), align: !!(enginePath && fs.existsSync(enginePath)) });
       if (u.pathname.startsWith('/job/')) return send(res, 200, jobs.get(u.pathname.slice(5)) || { state: 'missing', msg: 'Unknown job' });
       if (u.pathname.startsWith('/file/')) return sendFile(res, path.join(workDir, path.basename(decodeURIComponent(u.pathname.slice(6)))));
       if (u.pathname.startsWith('/assets/')) return sendFile(res, path.join(appDir, path.basename(u.pathname)));
@@ -119,6 +153,20 @@ function createServer(opts) {
         const j = newJob('separate'); const inp = path.join(workDir, j.id + '_in.wav'); const ws = fs.createWriteStream(inp);
         req.pipe(ws); ws.on('finish', () => { if (sepBusy(jobs, j)) j.msg = 'Waiting for the previous separation'; runSeparate(j, inp, model); send(res, 200, { job: j.id }); });
         ws.on('error', e => send(res, 500, { error: String(e) })); return;
+      }
+      if (u.pathname === '/align') {
+        // body: 4-byte big-endian length, lyrics JSON, then a WAV file
+        const j = newJob('align'); const wav = path.join(workDir, j.id + '_al.wav'), lyr = path.join(workDir, j.id + '_lyr.json');
+        const chunks = []; req.on('data', c => chunks.push(c));
+        req.on('end', () => {
+          try {
+            const b = Buffer.concat(chunks); const n = b.readUInt32BE(0);
+            fs.writeFileSync(lyr, b.subarray(4, 4 + n)); fs.writeFileSync(wav, b.subarray(4 + n));
+          } catch (e) { Object.assign(j, { state: 'error', msg: 'Bad request' }); return send(res, 400, { error: 'bad request' }); }
+          if (sepBusy(jobs, j)) j.msg = 'Waiting for the vocal separation to finish';
+          runAlign(j, wav, lyr, u.searchParams.get('vocals') === '1'); send(res, 200, { job: j.id });
+        });
+        return;
       }
       if (u.pathname.startsWith('/cancel/')) { const id = u.pathname.slice(8); const j = jobs.get(id); if (j) Object.assign(j, { state: 'cancelled', msg: 'Cancelled' }); const p = procs.get(id); if (p) try { p.kill(); } catch (e) { } return send(res, 200, { ok: true }); }
     }

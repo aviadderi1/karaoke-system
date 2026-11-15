@@ -20,6 +20,7 @@ import sys
 
 SR = 16000
 STAR = "*"
+MIRROR = "https://github.com/aviadderi1/karaoke-system/releases/download/models-v1/mms_fa_model.pt"
 
 
 class _Bar:
@@ -39,7 +40,10 @@ class _Bar:
     def update(self, k=1):
         self.n += k
         if _Bar.cb and self.total:
-            _Bar.cb(min(1.0, self.n / self.total))
+            f = min(1.0, self.n / self.total)
+            if int(f * 100) != getattr(self, "_last", -1):
+                self._last = int(f * 100)
+                _Bar.cb(f)
 
     def __enter__(self):
         return self
@@ -110,16 +114,52 @@ def separate_vocals(wav, sr, progress):
     return voc, msr
 
 
+def _mirror_download(models_dir, out):
+    """Second source for the model file, in case the original server is unreachable."""
+    import urllib.request
+    os.makedirs(models_dir, exist_ok=True)
+    dst = os.path.join(models_dir, "model.pt")
+    tmp = dst + ".part"
+    with urllib.request.urlopen(MIRROR, timeout=60) as r, open(tmp, "wb") as f:
+        total = int(r.headers.get("Content-Length") or 0)
+        done, last = 0, -1
+        while True:
+            b = r.read(1 << 20)
+            if not b:
+                break
+            f.write(b)
+            done += len(b)
+            if total and int(done * 100 / total) != last:
+                last = int(done * 100 / total)
+                out(f"S Downloading the timing model (once) {last}%")
+    os.replace(tmp, dst)
+
+
 def load_model(models_dir, out):
-    import torch
     import torch.hub as hub
     import torchaudio
+    try:  # frozen apps don't always find the system certificates
+        import certifi
+        os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+    except Exception:
+        pass
     bundle = torchaudio.pipelines.MMS_FA
     hub.tqdm = _Bar  # download progress
     _Bar.cb = lambda f: out(f"S Downloading the timing model (once) {int(f * 100)}%")
     kw = {"dl_kwargs": {"model_dir": models_dir, "progress": True}} if models_dir else {}
     try:
-        model = bundle.get_model(with_star=True, **kw)
+        try:
+            model = bundle.get_model(with_star=True, **kw)
+        except Exception as e:
+            if not models_dir:
+                raise
+            out("S The model server didn't answer, trying the Karaoke Lab mirror")
+            try:
+                os.remove(os.path.join(models_dir, "model.pt"))
+            except OSError:
+                pass
+            _mirror_download(models_dir, out)
+            model = bundle.get_model(with_star=True, **kw)
     finally:
         _Bar.cb = None
     model.eval()
@@ -183,7 +223,31 @@ def align(words, lines, model, bundle, wave, out, progress):
         e = sp[-1].end * spf / SR
         c = float(sum(t.score for t in sp) / len(sp))
         res[i] = {"s": round(s, 3), "e": round(e, 3), "c": round(c, 3)}
+    voiced_ends(res, wave)
     return res
+
+
+def voiced_ends(res, wave):
+    """CTC marks where a word starts very precisely, but a held note keeps going after its last letter.
+    Follow the vocal level after each word to find where the singing of that word really stops."""
+    import torch
+    hop = 320  # 20 ms
+    x = wave[0]
+    n = x.shape[0] // hop
+    if n < 2:
+        return
+    rms = x[: n * hop].reshape(n, hop).pow(2).mean(1).sqrt()
+    ref = float(torch.quantile(rms, 0.95)) if n > 10 else float(rms.max())
+    thr = max(1e-4, 0.12 * ref)
+    idx = [k for k, r in enumerate(res) if r]
+    for a, k in enumerate(idx):
+        r = res[k]
+        nxt = res[idx[a + 1]]["s"] if a + 1 < len(idx) else r["e"] + 4.0
+        f = int(r["e"] * SR / hop)
+        stop = min(n, int(nxt * SR / hop), f + int(4.0 * SR / hop))
+        while f < stop and rms[f] > thr:
+            f += 1
+        r["v"] = round(max(r["e"], f * hop / SR), 3)
 
 
 def run(a, out):
@@ -239,8 +303,8 @@ def selftest(a, out):
     for w, r in zip(words, res):
         out(f"W {w} {r}")
     # the reference timings from the torchaudio tutorial: "curiosity" ~0.67-1.25 s
-    cur = res[3]
-    ok = cur and 0.5 < cur["s"] < 0.85 and 1.0 < cur["e"] < 1.45
+    cur = res[3]  # torchaudio's tutorial gives "curiosity" at about 1.09-1.79 s
+    ok = cur and 0.95 < cur["s"] < 1.2 and 1.65 < cur["e"] < 1.95
     print("uroman test:", normalize_words(["שלום", "עולם", "hello"], "he"))
     out("DONE" if ok else "ERR alignment self-test is off: " + json.dumps(cur))
     if not ok:

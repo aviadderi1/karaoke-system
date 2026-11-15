@@ -228,7 +228,7 @@ app.whenReady().then(async () => {
     const server = createServer({
       appDir: path.join(__dirname, 'app'), workDir: path.join(app.getPath('temp'), 'karaoke-system-work'),
       ytdlpPath: ytdlp, denoDir: fs.existsSync(res('bin')) ? res('bin') : null,
-      enginePath: res('engine', 'ks-separate', engineName), modelsDir: res('models'), version: app.getVersion(), log
+      enginePath: res('engine', 'ks-separate', engineName), modelsDir: res('models'), alignDir: path.join(app.getPath('userData'), 'align-models'), version: app.getVersion(), log
     });
     port = await listen(server, 8765);
     status('Loading separation models');

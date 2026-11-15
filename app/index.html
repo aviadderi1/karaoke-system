@@ -1530,18 +1530,53 @@ function pageRunner(){const r={kind:'page',onmessage:null,onerror:null,terminate
 function openAutoSync(){if(!S.flat.length)return toast('Add the lyrics first (Lyrics panel)');if(!S.buf)return toast('Import the song first, then wait for the waveform');
  const he=isRTLText(P.text);const o=S.asOpt||{lang:'auto',acc:'balanced',vocal:true,keep:false};
  modal(`<h3><i class="ti ti-wand"></i> Auto-sync lyrics to song</h3>
- <div class="row" style="padding-left:0"><label>Language</label><select id="asLang"><option value="auto">Auto (from lyrics: ${he?'Hebrew':'detect'})</option><option value="hebrew">Hebrew</option><option value="english">English</option><option value="arabic">Arabic</option><option value="russian">Russian</option><option value="spanish">Spanish</option><option value="french">French</option></select></div>
- <div class="row" style="padding-left:0"><label>Accuracy</label><select id="asAcc">${Object.entries(ASR_MODELS).map(([k,v])=>`<option value="${k}">${v[1]}</option>`).join('')}</select></div>
- <div class="row" style="padding-left:0"><label>${S.vocBuf?'Using the separated vocal track':'Focus on vocals (filter out bass and cymbals)'}</label><input type="checkbox" id="asVocal" ${S.vocBuf?'disabled checked':''}></div>
+ ${DESKTOP?`<div class="row" style="padding-left:0"><label>Method</label><select id="asMethod"><option value="precise">Precise · time every letter of your lyrics (recommended)</option><option value="quick">Quick · speech recognition</option></select></div>`:''}
+ <div class="row asQ" style="padding-left:0"><label>Language</label><select id="asLang"><option value="auto">Auto (from lyrics: ${he?'Hebrew':'detect'})</option><option value="hebrew">Hebrew</option><option value="english">English</option><option value="arabic">Arabic</option><option value="russian">Russian</option><option value="spanish">Spanish</option><option value="french">French</option></select></div>
+ <div class="row asQ" style="padding-left:0"><label>Accuracy</label><select id="asAcc">${Object.entries(ASR_MODELS).map(([k,v])=>`<option value="${k}">${v[1]}</option>`).join('')}</select></div>
+ <div class="row asQ" style="padding-left:0"><label>${S.vocBuf?'Using the separated vocal track':'Focus on vocals (filter out bass and cymbals)'}</label><input type="checkbox" id="asVocal" ${S.vocBuf?'disabled checked':''}></div>
  <div class="row" style="padding-left:0"><label>Keep words I already timed by hand</label><input type="checkbox" id="asKeep"></div>
- <div class="hint">The speech model runs inside your browser, the song isn't uploaded anywhere. First run downloads the model once, then it's cached. Words the model is unsure about are marked amber on the timeline. Press U to jump between them.</div>
+ <div class="hint asQ">The speech model runs inside the app, the song isn't uploaded anywhere. First run downloads the model once, then it's cached. Words the model is unsure about are marked amber on the timeline. Press U to jump between them.</div>
+ <div class="hint asP" style="display:none">Karaoke Lab ${S.vocBuf?'uses the separated vocal track':'first separates the singing from the music (a few minutes)'}, then finds exactly where every letter of your lyrics is sung, so fast songs and Hebrew are timed precisely. Everything runs on this computer. The first time, it downloads the timing model once (about 1.2 GB). Make sure the lyrics match the song, including repeated choruses.</div>
  <div id="asProg" style="display:none;border-top:1px solid var(--line);margin-top:8px;padding-top:8px"><div id="asSteps" class="small" style="line-height:1.9"></div><div class="prog"><div id="asBar"></div></div><div id="asHeard" class="small muted" style="max-height:60px;overflow:auto;font-family:var(--mono)"></div></div>
  <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:12px"><button id="asCancel">Cancel</button><button class="pri" id="asGo"><i class="ti ti-wand"></i>Start</button></div>`);
  $('#asLang').value=o.lang;$('#asAcc').value=o.acc;$('#asVocal').checked=o.vocal;$('#asKeep').checked=o.keep;
- $('#asCancel').onclick=()=>{if(S.asRunning){ASRW&&ASRW.terminate();ASRW=null;S.asRunning=false;toast('Auto-sync cancelled')}closeModal()};
+ const mSel=$('#asMethod');const showM=()=>{const pr=mSel&&mSel.value==='precise';$$('.asQ').forEach(e=>e.style.display=pr?'none':'');$$('.asP').forEach(e=>e.style.display=pr?'':'none')};if(mSel){mSel.value=o.method||'precise';mSel.onchange=showM}showM();
+ $('#asCancel').onclick=()=>{if(S.asRunning){ASRW&&ASRW.terminate();ASRW=null;if(S.alignJob){fetch(HELPER+'/cancel/'+S.alignJob,{method:'POST'}).catch(()=>{});S.alignJob=null}S.asRunning=false;toast('Auto-sync cancelled')}closeModal()};
  $('#asGo').onclick=runAutoSync}
 function asStep(html){$('#asSteps').innerHTML=html}
-async function runAutoSync(){if(S.asRunning)return;const opt={lang:$('#asLang').value,acc:$('#asAcc').value,vocal:$('#asVocal').checked,keep:$('#asKeep').checked};S.asOpt=opt;
+/* ---------- precise auto-sync: forced alignment in the desktop engine ---------- */
+function monoBuffer(b){if(b.numberOfChannels===1)return b;const o=new AudioBuffer({length:b.length,numberOfChannels:1,sampleRate:b.sampleRate});const d=o.getChannelData(0);for(let c=0;c<b.numberOfChannels;c++){const x=b.getChannelData(c);for(let i=0;i<d.length;i++)d[i]+=x[i]/b.numberOfChannels}return o}
+async function runPrecise(opt){
+ $('#asProg').style.display='';$('#asGo').disabled=true;S.asRunning=true;const useVoc=!!S.vocBuf;
+ const steps=[...(useVoc?[]:['Separating the vocals from the music']),'Loading the timing model','Listening to the vocals','Matching the lyrics to the singing'];
+ const show=(i,extra='')=>asStep(steps.map((t,k)=>`<div>${k<i?'<i class="ti ti-circle-check" style="color:#5fd18a"></i>':k===i?'<i class="ti ti-loader-2" style="color:var(--acc)"></i>':'<i class="ti ti-circle" style="color:#555"></i>'} ${k===i?'<span style="color:#fff">'+t+'</span>'+extra:t}</div>`).join(''));
+ show(0,' <span class="muted">preparing audio…</span>');
+ try{
+  if(!await helperStatus(false))throw new Error('The timing engine is not running.');
+  const toks=S.flat.map(f=>f.tok);const words=toks.map(t=>t.t),lines=S.flat.map(f=>f.li);
+  const wav=encodeWAV(useVoc?monoBuffer(S.vocBuf):S.buf);const js=new TextEncoder().encode(JSON.stringify({words,lines}));const head=new Uint8Array(4);new DataView(head.buffer).setUint32(0,js.length);
+  const r=await (await fetch(HELPER+'/align?vocals='+(useVoc?1:0),{method:'POST',body:new Blob([head,js,wav])})).json();if(!r.job)throw new Error(r.error||'The engine did not accept the job');S.alignJob=r.job;const t0=Date.now();
+  const res=await waitJob(r.job,j=>{if(!S.asRunning)return;const m=j.msg||'';let i=steps.findIndex(t=>m.startsWith(t.split(' ').slice(0,2).join(' ')));if(/Downloading/.test(m))i=steps.indexOf('Loading the timing model');if(i<0)i=0;
+   let eta='';if(j.progress>0.04){const el=(Date.now()-t0)/1000,left=el/j.progress-el;eta=` · about ${left>90?Math.round(left/60)+' min':Math.round(left)+' s'} left`}
+   show(i,` <span class="muted">${/Downloading|mirror|Waiting/.test(m)?esc(m):Math.round((j.progress||0)*100)+'%'+eta}</span>`);$('#asBar').style.width=((j.progress||0)*100)+'%'});
+  S.alignJob=null;if(!S.asRunning)return;
+  pushUndo();const st=applyPrecise(res.words||[],opt.keep);S.asRunning=false;bump();updateStats();drawTL();
+  asStep(`<div><i class="ti ti-circle-check" style="color:#5fd18a"></i> <span style="color:#fff">Done in ${Math.round((Date.now()-t0)/1000)} s.</span> ${st.ok} of ${st.total} words timed precisely${st.low?`, ${st.low} marked amber to check`:''}.</div>`);$('#asBar').style.width='100%';
+  $('#asGo').disabled=false;$('#asGo').innerHTML='<i class="ti ti-check"></i>Close';$('#asGo').onclick=()=>{closeModal();seek(Math.max(0,(S.flat.find(f=>f.tok.s!=null)||{tok:{s:0}}).tok.s-3));jumpLow(true)};$('#asCancel').textContent='Undo';$('#asCancel').onclick=()=>{undo();closeModal()};
+ }catch(e){S.alignJob=null;if(!S.asRunning)return;S.asRunning=false;$('#asGo').disabled=false;asStep(`<div style="color:var(--red)"><i class="ti ti-alert-triangle"></i> Auto-sync failed: ${esc(String(e.message||e)).slice(0,260)}</div><div class="muted">The first run needs an internet connection to download the timing model. You can also try the Quick method.</div>`)}}
+function applyPrecise(res,keep){const toks=S.flat.map(f=>f.tok),n=toks.length;const A=toks.map((t,i)=>res[i]?{...res[i]}:null);
+ if(keep)toks.forEach((t,i)=>{if(t.s!=null&&t.c==null)A[i]={s:t.s,e:t.e!=null?t.e:t.s+0.3,v:t.e,c:1,manual:true}});
+ let last=-1;A.forEach((a,i)=>{if(!a)return;if(a.s<last-0.02&&!a.manual)A[i]=null;else last=Math.max(last,a.s)});
+ // words the model couldn't read (numbers, symbols): share the time between their neighbours
+ for(let i=0;i<n;){if(A[i]){i++;continue}let j=i;while(j<n&&!A[j])j++;const prev=A[i-1],next=A[j],k=j-i,per=0.3;
+  let t0=prev?(prev.v||prev.e):(next?Math.max(0,next.s-k*per):0),t1=next?next.s:t0+k*per;if(t1-t0>k*per*1.5){if(prev)t1=t0+k*per;else t0=t1-k*per}
+  const d=Math.max(0.05,(t1-t0)/k);for(let q=0;q<k;q++)A[i+q]={s:t0+q*d+0.01,e:t0+(q+1)*d-0.02,c:0.3,fill:true};i=j}
+ // ends: the wipe follows the voice; it runs straight into the next word unless there is a real pause
+ let ok=0,low=0;A.forEach((a,i)=>{const nx=A[i+1];let e=Math.max(a.e,a.v||0,a.s+0.08);if(nx){if(nx.s-e<0.3)e=nx.s-0.01;else e=Math.min(e+0.06,nx.s-0.01)}else e+=0.1;
+  const t=toks[i];if(keep&&a.manual){ok++;return}t.s=+Math.max(0,a.s).toFixed(3);t.e=+Math.max(t.s+0.05,e).toFixed(3);t.c=+(a.fill?0.3:Math.min(1,a.c)).toFixed(2);if(t.c<0.6)low++;else ok++});
+ return {ok,low,total:n}}
+async function runAutoSync(){if(S.asRunning)return;const opt={lang:$('#asLang').value,acc:$('#asAcc').value,vocal:$('#asVocal').checked,keep:$('#asKeep').checked,method:$('#asMethod')?$('#asMethod').value:'quick'};S.asOpt=opt;
+ if(opt.method==='precise')return runPrecise(opt);
  $('#asProg').style.display='';$('#asGo').disabled=true;S.asRunning=true;const steps=['Preparing audio','Loading speech model','Listening to the song','Matching words to your lyrics'];let cur=0;const show=(i,extra='')=>{cur=i;asStep(steps.map((t,k)=>`<div>${k<i?'<i class="ti ti-circle-check" style="color:#5fd18a"></i>':k===i?'<i class="ti ti-loader-2" style="color:var(--acc)"></i>':'<i class="ti ti-circle" style="color:#555"></i>'} ${k===i?'<span style="color:#fff">'+t+'</span>'+extra:t}</div>`).join(''))};
  show(0);await new Promise(r=>setTimeout(r,30));
  const pcm=await prepAudio16k(S.vocBuf||S.buf,opt.vocal&&!S.vocBuf);const sr=16000,win=28,step=26,chunks=[];const total=pcm.length/sr;

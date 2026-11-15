@@ -33,6 +33,17 @@ jobs:
               --notes "Karaoke Lab $TAG — Windows installer (.exe) and macOS (.dmg: arm64 for Apple Silicon M1–M4, x64 for Intel)."
           fi
 
+      - name: Keep a mirror of the timing model
+        if: steps.v.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view models-v1 -R "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' 2>/dev/null | grep -q mms_fa_model.pt; then echo "mirror exists"; exit 0; fi
+          curl -fL --retry 3 -o mms_fa_model.pt https://dl.fbaipublicfiles.com/mms/torchaudio/ctc_alignment_mling_uroman/model.pt || { echo "::warning::could not fetch the model for the mirror"; exit 0; }
+          ls -la mms_fa_model.pt
+          gh release view models-v1 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create models-v1 -R "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" --title "Model files (not an app version)" --notes "Model files Karaoke Lab downloads on first use. Not an app release."
+          gh release upload models-v1 mms_fa_model.pt -R "$GITHUB_REPOSITORY" --clobber
+
   build:
     needs: create-release
     if: needs.create-release.outputs.skip != 'true'
@@ -89,7 +100,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install ${{ matrix.torch }} ${{ matrix.torch_index }}
-          python -m pip install "${{ matrix.numpy }}" soundfile dora-search einops "julius>=0.2.3" openunmix pyyaml tqdm "pyinstaller>=6.6"
+          python -m pip install "${{ matrix.numpy }}" soundfile dora-search einops "julius>=0.2.3" openunmix pyyaml tqdm "pyinstaller>=6.6" uroman certifi
           python -m pip install --no-deps demucs==4.0.1
 
       - name: Restore separation models from cache
@@ -139,6 +150,8 @@ jobs:
             --collect-all soundfile --collect-submodules julius --collect-submodules openunmix \
             --collect-submodules dora --collect-data omegaconf --hidden-import yaml \
             --hidden-import numpy.core.multiarray --collect-submodules numpy.core \
+            --paths engine --hidden-import align --collect-all uroman --collect-data certifi \
+            --collect-submodules torchaudio --collect-data torchaudio --collect-binaries torchaudio \
             engine/sep_cli.py
           du -sh resources/engine
 
@@ -147,6 +160,8 @@ jobs:
           EXE=resources/engine/ks-separate/ks-separate
           [ -f "$EXE.exe" ] && EXE="$EXE.exe"
           TORCH_HOME="$PWD/resources/models" "$EXE" --selftest
+          # precise auto-sync: downloads the timing model into a temp folder (not shipped) and checks the timing
+          TORCH_HOME="$PWD/resources/models" "$EXE" --align-selftest --models "$RUNNER_TEMP/mms"
 
       - name: Download yt-dlp and Deno
         run: |
