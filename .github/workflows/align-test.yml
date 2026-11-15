@@ -1,21 +1,44 @@
-name: Align engine test
+name: Align engine test (frozen)
 on:
   push:
     branches: [align-test]
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  frozen:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: windows-x64, os: windows-latest, python: '3.12', torch: 'torch==2.6.0 torchaudio==2.6.0', torch_index: '--index-url https://download.pytorch.org/whl/cpu', numpy: 'numpy<2.3' }
+          - { name: mac-arm64, os: macos-15, python: '3.12', torch: 'torch==2.6.0 torchaudio==2.6.0', torch_index: '', numpy: 'numpy<2.3' }
+          - { name: mac-x64, os: macos-15-intel, python: '3.11', torch: 'torch==2.2.2 torchaudio==2.2.2', torch_index: '', numpy: 'numpy<2' }
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    defaults: { run: { shell: bash } }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: '${{ matrix.python }}' }
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          python -m pip install torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu
-          python -m pip install "numpy<2" soundfile uroman certifi dora-search einops "julius>=0.2.3" openunmix pyyaml tqdm
+          python -m pip install ${{ matrix.torch }} ${{ matrix.torch_index }}
+          python -m pip install "${{ matrix.numpy }}" soundfile dora-search einops "julius>=0.2.3" openunmix pyyaml tqdm "pyinstaller>=6.6" uroman certifi
           python -m pip install --no-deps demucs==4.0.1
-      - name: Self-test
-        run: cd engine && python sep_cli.py --align-selftest --models /tmp/mms
-      - name: Benchmark over music (separation + alignment)
-        run: cd engine && time python align_bench.py
+      - name: Build
+        run: |
+          python -m PyInstaller --noconfirm --clean --onedir --console --name ks-separate \
+            --distpath resources/engine --workpath build/pyi --specpath build/pyi \
+            --collect-submodules demucs --collect-data demucs \
+            --collect-all soundfile --collect-submodules julius --collect-submodules openunmix \
+            --collect-submodules dora --collect-data omegaconf --hidden-import yaml \
+            --hidden-import numpy.core.multiarray --collect-submodules numpy.core \
+            --paths engine --hidden-import align --collect-all uroman --collect-data certifi \
+            --collect-submodules torchaudio --collect-data torchaudio --collect-binaries torchaudio \
+            engine/sep_cli.py
+          du -sh resources/engine
+      - name: Frozen self-test and benchmark
+        run: |
+          EXE="$PWD/resources/engine/ks-separate/ks-separate"; [ -f "$EXE.exe" ] && EXE="$EXE.exe"
+          export TORCH_HOME="$RUNNER_TEMP/th" MMS_DIR="$RUNNER_TEMP/mms"
+          "$EXE" --align-selftest --models "$MMS_DIR"
+          cd engine && time python align_bench.py "$EXE"
