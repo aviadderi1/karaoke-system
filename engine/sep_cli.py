@@ -4,6 +4,8 @@ Usage:
   ks-separate INPUT.wav OUTDIR [-n htdemucs_ft|htdemucs]
   ks-separate --warmup            (downloads the models into $TORCH_HOME)
   ks-separate --selftest          (separates 3 s of noise with htdemucs)
+  ks-separate --align AUDIO.wav --lyrics WORDS.json --out RESULT.json [--vocals] [--models DIR]
+                                  (word-level forced alignment of known lyrics, see align.py)
 
 Prints machine-readable lines on stdout:
   M <number of models>
@@ -47,7 +49,17 @@ def main():
     ap.add_argument("-n", "--name", default="htdemucs_ft")
     ap.add_argument("--warmup", action="store_true")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--align")
+    ap.add_argument("--lyrics")
+    ap.add_argument("--out")
+    ap.add_argument("--vocals", action="store_true", help="the input is already a vocal stem")
+    ap.add_argument("--models")
+    ap.add_argument("--align-selftest", action="store_true")
     a = ap.parse_args()
+
+    if a.align or a.align_selftest:
+        import align
+        return align.run(a, out)
 
     import numpy as np
     try:  # model checkpoints pickle numpy.core.multiarray; make sure the bundler includes it
