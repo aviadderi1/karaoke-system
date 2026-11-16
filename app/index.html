@@ -586,6 +586,18 @@ function parseText(text){
   if(toks.length)lines.push(toks)});
  return lines;
 }
+/* verse / chorus detection: a chorus is lyrics that come back. A stanza (lines between blank lines) whose lines mostly
+   appear again elsewhere is a chorus; without blank lines, runs of 2+ repeated lines are a chorus. */
+const SEC_CACHE=new Map();
+function secNorm(l){return l.toLowerCase().replace(/[\u0591-\u05C7]/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim()}
+function sectionsOf(lines,text){const strs=lines.map(l=>l.map(k=>k.t+(k.j?'':' ')).join('').trim()),key=strs.join('\n')+'\u0000'+(text||'');
+ if(SEC_CACHE.has(key))return SEC_CACHE.get(key);
+ const nl=strs.map(secNorm),cnt=new Map();nl.forEach(x=>cnt.set(x,(cnt.get(x)||0)+1));const rep=nl.map(x=>x.length>1&&cnt.get(x)>1);
+ // stanza of each line, from the blank lines in the lyrics text (only if the text still matches the lines)
+ let blk=null;if(text){const raw=text.replace(/\r/g,'').split('\n');let b=0,i=0,ok=true;const a=[];raw.forEach(r=>{if(!r.trim()){if(a.length&&a[a.length-1]===b)b++;return}a.push(b);i++});if(a.length===nl.length)blk=a}
+ const out=nl.map((x,i)=>rep[i]&&((rep[i-1]&&(!blk||blk[i-1]===blk[i]))||(rep[i+1]&&(!blk||blk[i+1]===blk[i]))));
+ if(blk){const by=new Map();blk.forEach((b,i)=>{if(!by.has(b))by.set(b,[]);by.get(b).push(i)});by.forEach(ix=>{const r=ix.filter(i=>rep[i]).length;const ch=ix.length>1&&r/ix.length>=0.6;ix.forEach(i=>{if(ch)out[i]=true;else if(r/ix.length<0.34)out[i]=false})})}
+ if(SEC_CACHE.size>20)SEC_CACHE.clear();SEC_CACHE.set(key,out);return out}
 function linesToText(lines){return lines.map(l=>l.map(k=>k.t+(k.j?'/':' ')).join('').trim()).join('\n')}
 function rebuildFlat(){S.flat=[];P.lines.forEach((l,li)=>l.forEach((tok,ti)=>S.flat.push({li,ti,tok})));}
 function applyText(text,keep=true){
@@ -1204,11 +1216,11 @@ function drawTL(){
  const y3=ty.V3;dimT('V3');sch.cds.forEach((cd,ci)=>{const x0=t2x(cd.t0),x1=t2x(cd.t1);if(x1<0||x0>W)return;const on=S.cdSel===ci;clip(c,x0,y3.y+3,x1-x0,y3.h-6,on?'#e0b83a':'#c9a227',on?'#fff':'#e8c34a');c.fillStyle='#3a2c00';c.font='11px "Source Sans 3", sans-serif';const N=P.style.cdDots;c.save();c.beginPath();c.rect(x0,y3.y,x1-x0,y3.h);c.clip();c.fillText(P.style.cdType==='digits'?Array.from({length:N},(_,i)=>N-i).join(' '):'● '.repeat(N).trim(),Math.max(x0,0)+6,y3.y+17);c.restore()});
  if(sch.title){const x0=t2x(sch.title.t0),x1=t2x(sch.title.t1);clip(c,x0,y3.y+3,x1-x0,y3.h-6,'#5a5a5a','#7a7a7a');c.fillStyle='#eee';c.font='11px "Source Sans 3", sans-serif';c.fillText('Title card · '+(TITLE_ANIMS.find(a=>a[0]===(P.style.titleAnim||'fade'))||['',''])[1],Math.max(x0,0)+6,y3.y+17)}
  // V2 / V2B words
- const drawWords=(lane,active)=>{const y2=ty[lane];if(!y2)return;dimT(lane);c.font='11.5px "Source Sans 3", sans-serif';const duet=lane==='V2B';
+ const drawWords=(lane,active)=>{const y2=ty[lane];if(!y2)return;dimT(lane);c.font='11.5px "Source Sans 3", sans-serif';const duet=lane==='V2B',secs=sectionsOf(P.lines,P.text);
   if(P.duetOn&&active){c.fillStyle='rgba(255,255,255,.035)';c.fillRect(0,y2.y,W,y2.h-1)}
   S.flat.forEach((f,gi)=>{const k=f.tok;if(k.s==null)return;const e=k.e!=null?k.e:Math.max(k.s+0.3,gi===S.holding?curT():0);const x0=t2x(k.s),x1=t2x(e);if(x1<0||x0>W)return;const sel=active&&(gi===S.sel||(S.msel&&S.msel.has(gi)));
-   const odd=f.li%2,low=k.c!=null&&k.c<0.6;const base=duet?(odd?'#c4508e':'#d65a9c'):(odd?'#8461cc':'#8e6ad6'),edge=duet?'#f08cc0':'#b495f0',hi=duet?'#ef7fb8':'#a988ec';
-   clip(c,x0,y2.y+5,Math.max(2,x1-x0-1),y2.h-10,sel?(low?'#e8b44a':hi):low?'#c99a2e':base,sel?'#fff':low?'#f0c560':edge);
+   const odd=f.li%2,ch=secs[f.li];const base=ch?(duet?(odd?'#c0662c':'#cc7234'):(odd?'#24877a':'#2a9486')):duet?(odd?'#c4508e':'#d65a9c'):(odd?'#8461cc':'#8e6ad6'),edge=ch?(duet?'#f0a36e':'#5cc7b6'):duet?'#f08cc0':'#b495f0',hi=ch?(duet?'#e68a4c':'#38b3a2'):duet?'#ef7fb8':'#a988ec';
+   clip(c,x0,y2.y+5,Math.max(2,x1-x0-1),y2.h-10,sel?hi:base,sel?'#fff':edge);
    if(x1-x0>14){c.save();c.beginPath();c.rect(x0+2,y2.y,x1-x0-4,y2.h);c.clip();c.fillStyle='#fff';c.fillText(k.t+(k.j?'-':''),x0+5,y2.y+y2.h/2+4);c.restore()}});
   if(duet&&!S.flat.some(f=>f.tok.s!=null)){c.fillStyle='#6a5a66';c.font='11px "Source Sans 3", sans-serif';c.fillText(active?'Lyrics 2 is active: type the duet lyrics in the Lyrics panel, then tap-sync':'Click here to edit Lyrics 2 (duet singer)',8,y2.y+y2.h/2+4)}};
  withTrack(1,()=>drawWords('V2',S.lt===1));if(P.duetOn)withTrack(2,()=>drawWords('V2B',S.lt===2));
@@ -1659,7 +1671,7 @@ function openAutoSync(){if(!S.flat.length)return toast('Add the lyrics first (Ly
  <div class="row asQ" style="padding-left:0"><label>Accuracy</label><select id="asAcc">${Object.entries(ASR_MODELS).map(([k,v])=>`<option value="${k}">${v[1]}</option>`).join('')}</select></div>
  <div class="row asQ" style="padding-left:0"><label>${S.vocBuf?'Using the separated vocal track':'Focus on vocals (filter out bass and cymbals)'}</label><input type="checkbox" id="asVocal" ${S.vocBuf?'disabled checked':''}></div>
  <div class="row" style="padding-left:0"><label>Keep words I already timed by hand</label><input type="checkbox" id="asKeep"></div>
- <div class="hint asQ">The speech model runs inside the app, the song isn't uploaded anywhere. First run downloads the model once, then it's cached. Words the model is unsure about are marked amber on the timeline. Press U to jump between them.</div>
+ <div class="hint asQ">The speech model runs inside the app, the song isn't uploaded anywhere. First run downloads the model once, then it's cached. On the timeline, verses are purple and choruses are green. Press U to jump to words the model was unsure about.</div>
  <div class="hint asP" style="display:none">Karaoke Lab ${S.vocBuf?'uses the separated vocal track':'first separates the singing from the music (a few minutes)'}, then finds exactly where every letter of your lyrics is sung, so fast songs and Hebrew are timed precisely. Everything runs on this computer. The first time, it downloads the timing model once (about 1.2 GB). Make sure the lyrics match the song, including repeated choruses.</div>
  <div id="asProg" style="display:none;border-top:1px solid var(--line);margin-top:8px;padding-top:8px"><div id="asSteps" class="small" style="line-height:1.9"></div><div class="prog"><div id="asBar"></div></div><div id="asHeard" class="small muted" style="max-height:60px;overflow:auto;font-family:var(--mono)"></div></div>
  <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:12px"><button id="asCancel">Cancel</button><button class="pri" id="asGo"><i class="ti ti-wand"></i>Start</button></div>`);
@@ -1692,7 +1704,7 @@ async function runPrecise(opt){
    show(i,` <span class="muted">${/Downloading|mirror|Waiting/.test(m)?esc(m):Math.round((j.progress||0)*100)+'%'+eta}</span>`);$('#asBar').style.width=((j.progress||0)*100)+'%'});
   S.alignJob=null;if(!S.asRunning)return;
   pushUndo();const st=applyPrecise(res.words||[],opt.keep);S.asRunning=false;bump();updateStats();drawTL();
-  asStep(`<div><i class="ti ti-circle-check" style="color:#5fd18a"></i> <span style="color:#fff">Done in ${Math.round((Date.now()-t0)/1000)} s.</span> ${st.ok} of ${st.total} words timed precisely${st.low?`, ${st.low} marked amber to check`:''}.</div>`);$('#asBar').style.width='100%';
+  asStep(`<div><i class="ti ti-circle-check" style="color:#5fd18a"></i> <span style="color:#fff">Done in ${Math.round((Date.now()-t0)/1000)} s.</span> ${st.ok} of ${st.total} words timed precisely${st.low?`, ${st.low} unsure (press U to check them)`:''}.</div>`);$('#asBar').style.width='100%';
   $('#asGo').disabled=false;$('#asGo').innerHTML='<i class="ti ti-check"></i>Close';$('#asGo').onclick=()=>{closeModal();seek(Math.max(0,(S.flat.find(f=>f.tok.s!=null)||{tok:{s:0}}).tok.s-3));jumpLow(true)};$('#asCancel').textContent='Undo';$('#asCancel').onclick=()=>{undo();closeModal()};
  }catch(e){S.alignJob=null;if(!S.asRunning)return;S.asRunning=false;$('#asGo').disabled=false;asStep(`<div style="color:var(--red)"><i class="ti ti-alert-triangle"></i> Auto-sync failed: ${esc(String(e.message||e)).slice(0,260)}</div><div class="muted">The first run needs an internet connection to download the timing model. You can also try the Quick method.</div>`)}}
 function applyPrecise(res,keep){const toks=S.flat.map(f=>f.tok),n=toks.length;const A=toks.map((t,i)=>res[i]?{...res[i]}:null);
@@ -1725,7 +1737,7 @@ async function runAutoSync(){if(S.asRunning)return;const opt={lang:$('#asLang').
  let words;try{words=await go(device)}catch(err){if(!S.asRunning)return;if(device==='webgpu'){console.warn('webgpu failed, retrying on CPU',err);ASRW&&ASRW.terminate();ASRW=null;try{words=await go('wasm')}catch(e2){return asFail(e2)}}else return asFail(err)}
  if(!S.asRunning)return;show(3);await new Promise(r=>setTimeout(r,30));
  pushUndo();const st=alignLyrics(words,opt.keep);S.asRunning=false;bump();updateStats();drawTL();
- asStep(`<div><i class="ti ti-circle-check" style="color:#5fd18a"></i> <span style="color:#fff">Done.</span> ${st.matched} of ${st.total} words matched directly, ${st.low} marked amber to check.</div>`);$('#asBar').style.width='100%';
+ asStep(`<div><i class="ti ti-circle-check" style="color:#5fd18a"></i> <span style="color:#fff">Done.</span> ${st.matched} of ${st.total} words matched directly, ${st.low} unsure (press U to check them).</div>`);$('#asBar').style.width='100%';
  $('#asGo').disabled=false;$('#asGo').innerHTML='<i class="ti ti-check"></i>Close';$('#asGo').onclick=()=>{closeModal();seek(Math.max(0,(S.flat.find(f=>f.tok.s!=null)||{tok:{s:0}}).tok.s-3));jumpLow(true)};$('#asCancel').textContent='Undo';$('#asCancel').onclick=()=>{undo();closeModal()};
  if(!st.heard)toast('The model did not hear any words. Try Accurate, or turn off Focus on vocals.',6000)}
 function asFail(err){S.asRunning=false;$('#asGo').disabled=false;const m=(err&&err.msg)||String(err);asStep(`<div style="color:var(--red)"><i class="ti ti-alert-triangle"></i> Auto-sync failed: ${esc(m).slice(0,200)}</div><div class="muted">Check your internet connection for the first model download, or try a smaller accuracy setting.</div>`)}
