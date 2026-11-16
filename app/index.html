@@ -63,6 +63,11 @@ input[type=checkbox]{accent-color:var(--acc)}
 .ptabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 6px;flex:0 0 auto;background:#202020;overflow-x:auto;scrollbar-width:none}
 .ptabs span{padding:6px 6px;white-space:nowrap;color:var(--txt2);cursor:pointer;font-size:12px;border-bottom:2px solid transparent}
 .ptabs span.on{color:var(--hi);border-bottom-color:var(--acc)}
+.pclose{margin-left:auto;position:sticky;right:0;align-self:center;padding:3px 2px 3px 6px;color:#7a7a7a;cursor:pointer;font-size:14px;background:#202020;flex:0 0 auto}.pclose:hover{color:#d0d0d0}
+#app.noL #leftP,#app.noR #rightP{display:none}
+#app.noL #main{grid-template-columns:minmax(0,1fr) 290px}#app.noR #main{grid-template-columns:300px minmax(0,1fr)}#app.noL.noR #main{grid-template-columns:minmax(0,1fr)}
+#app.floatmon.noL #main,#app.floatmon.noR #main{grid-template-columns:minmax(0,1fr)}
+#app.floatmon.noL.noR #main{grid-template-columns:0}
 .pbody{flex:1;overflow:auto;min-height:0;display:none;padding:8px}
 .pbody.on{display:flex;flex-direction:column}
 .pbody::-webkit-scrollbar,#lyr::-webkit-scrollbar,.scr::-webkit-scrollbar{width:10px;height:10px}
@@ -303,6 +308,8 @@ input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;bac
    <div data-a="maxmon">Maximize monitor<kbd>`</kbd></div>
    <div data-a="floatmon">Floating monitor<kbd>Shift+`</kbd></div>
    <div data-a="popmon">Monitor in separate window</div><hr>
+   <div data-a="panelL">Left panel (Lyrics, Effects…)</div>
+   <div data-a="panelR">Right panel (Backgrounds, Export)</div><hr>
    <div data-a="safe">Toggle safe margins</div>
    <div data-a="resetLayout">Reset timeline height</div>
   </div></div>
@@ -319,7 +326,7 @@ input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;bac
  <div id="main">
   <!-- LEFT -->
   <div class="panel" id="leftP">
-   <div class="ptabs"><span data-t="lyrics" class="on">Lyrics</span><span data-t="fx">Effects</span><span data-t="tpl">Templates</span><span data-t="vfx">Video FX</span><span data-t="media">Media</span></div>
+   <div class="ptabs"><span data-t="lyrics" class="on">Lyrics</span><span data-t="fx">Effects</span><span data-t="tpl">Templates</span><span data-t="vfx">Video FX</span><span data-t="media">Media</span><i class="ti ti-x pclose" data-close="L" title="Close this panel (Window menu brings it back)"></i></div>
    <div class="pbody on" data-b="lyrics">
     <div class="grid2"><input type="text" id="artist" placeholder="Artist"><input type="text" id="title" placeholder="Song title"></div>
     <div class="flexr" style="margin-top:6px"><button class="pri" id="searchBtn"><i class="ti ti-search"></i>Find lyrics</button><button id="webBtn" title="Open a built-in browser with the search ready; select the lyrics and send them here"><i class="ti ti-world-search"></i>Search the web</button><button id="impLyrBtn" title="Import .lrc / .txt"><i class="ti ti-file-import"></i></button></div>
@@ -400,7 +407,7 @@ input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;bac
   </div>
   <!-- RIGHT -->
   <div class="panel" id="rightP">
-   <div class="ptabs"><span data-t="bg" class="on">Backgrounds</span><span data-t="export">Export</span></div>
+   <div class="ptabs"><span data-t="bg" class="on">Backgrounds</span><span data-t="export">Export</span><i class="ti ti-x pclose" data-close="R" title="Close this panel (Window menu brings it back)"></i></div>
    <div class="pbody on" data-b="bg">
     <div id="bgTarget"></div>
     <div id="bgCats"></div>
@@ -1455,7 +1462,7 @@ function loop(){
  requestAnimationFrame(loop)}
 
 /* ---------- UI wiring ---------- */
-function showTab(pid,tab){const p=$('#'+pid);p.querySelectorAll('.ptabs [data-t]').forEach(s=>s.classList.toggle('on',s.dataset.t===tab));p.querySelectorAll('.pbody[data-b]').forEach(b=>b.classList.toggle('on',b.dataset.b===tab))}
+function showTab(pid,tab){const p=$('#'+pid);if(pid==='leftP')setPanel('L',true);else if(pid==='rightP')setPanel('R',true);p.querySelectorAll('.ptabs [data-t]').forEach(s=>s.classList.toggle('on',s.dataset.t===tab));p.querySelectorAll('.pbody[data-b]').forEach(b=>b.classList.toggle('on',b.dataset.b===tab))}
 $$('.ptabs [data-t]').forEach(s=>s.onclick=()=>showTab(s.closest('.panel').id,s.dataset.t));
 $$('#wsbar span').forEach(s=>s.onclick=()=>workspace(s.dataset.ws));
 function workspace(ws){$$('#wsbar span').forEach(s=>s.classList.toggle('on',s.dataset.ws===ws));$$('.panel').forEach(p=>p.classList.remove('focus'));
@@ -1492,7 +1499,7 @@ function act(a){switch(a){
  case 'aExportWav':exportAudio('wav');break;case 'vExportWav':exportAudio('wav','vocal');break;case 'unsep':unseparate();break;case 'sepMenu':workspace('import');separateVocals();break;case 'ytImport':workspace('import');$('#ytUrl').focus();break;case 'aExportMp3':exportAudio('mp3');break;
  case 'autosync':openAutoSync();break;case 'selectLow':jumpLow();break;
  case 'arm':setArmed(!S.armed);break;case 'rate75':$('#rate').value='0.75';$('#rate').onchange();break;case 'rate100':$('#rate').value='1';$('#rate').onchange();break;
- case 'maxmon':toggleMax();break;case 'floatmon':toggleFloat();break;case 'popmon':openPopup();break;
+ case 'maxmon':toggleMax();break;case 'floatmon':toggleFloat();break;case 'popmon':openPopup();break;case 'panelL':setPanel('L',$('#app').classList.contains('noL'));break;case 'panelR':setPanel('R',$('#app').classList.contains('noR'));break;
  case 'safe':S.safe=!S.safe;fitMonitor();break;case 'resetLayout':$('#app').style.gridTemplateRows='';onResize();break;
  case 'keys':showKeys();break;case 'checkUpd':if(DESKTOP){toast('Checking for updates…');ksDesktop.checkUpdates()}else toast('Updates are available in the desktop version');break;
  case 'about':modal(`<h3>Karaoke Lab${DESKTOP?' '+ksDesktop.version:''}</h3><p class="muted">Karaoke subtitle editor with tap sync, timeline editing, animated backgrounds and Full HD rendering.</p><p class="muted">AD SOUND &amp; SERVICE</p><div style="text-align:right"><button onclick="closeModal()">Close</button></div>`);break;
@@ -1605,6 +1612,11 @@ setInterval(()=>{if(!S.mDown&&S.base!=null)checkpoint()},400);
 function onKeyUp(e){if(e.code==='Space'&&S.armed&&!inField(e)){e.preventDefault();tapUp()}}
 addEventListener('keyup',onKeyUp);
 function onResize(){fitMonitor();resizeTL()}
+// close / reopen the side panels; the monitor takes the freed space
+function setPanel(side,show){const a=$('#app'),c='no'+side;if(a.classList.contains(c)===!show)return;a.classList.toggle(c,!show);try{localStorage.setItem('kl_panels',(a.classList.contains('noL')?'L':'')+(a.classList.contains('noR')?'R':''))}catch(e){}
+ const m=$('[data-a="panel'+side+'"]');requestAnimationFrame(onResize);if(!show)toast((side==='L'?'Left':'Right')+' panel closed. Window menu brings it back.',2200)}
+$$('.pclose').forEach(x=>x.onclick=e=>{e.stopPropagation();setPanel(x.dataset.close,false)});
+try{const h=localStorage.getItem('kl_panels')||'';if(h.includes('L'))$('#app').classList.add('noL');if(h.includes('R'))$('#app').classList.add('noR')}catch(e){}
 addEventListener('resize',onResize);
 function refreshAll(){loadTracks();markLyrTab();S.bgSel=-1;S.bgFocus=false;if(!P.bgClips)P.bgClips=[];restoreLogo();buildLogoCtl();if(!P.vfx)P.vfx={...DEF_VFX};buildVfx();$('#lyr').value=P.text||linesToText(P.lines);$('#artist').value=P.artist;$('#title').value=P.title;$('#audioSrc').value=P.audioSource;rebuildFlat();S.sel=-1;bump();updateStats();updateName();buildFx();buildBgCtl();buildThumbs();bgSelChanged();updateStatus();drawTL()}
 /* ---------- audio editing ---------- */
