@@ -145,8 +145,6 @@ input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;bac
 .thumb span{position:absolute;left:0;right:0;bottom:0;font-size:10.5px;padding:1px 4px;background:rgba(0,0,0,.6);color:#ddd}
 .thumb.on{border-color:var(--acc)}
 .tplGrid{grid-template-columns:repeat(auto-fill,minmax(118px,1fr))}
-.thumb .heb{position:absolute;top:3px;right:3px;font-size:9.5px;padding:0 4px;border-radius:3px;background:rgba(0,0,0,.55);color:#cfcfcf}
-#tplFilt button{padding:2px 9px;font-size:11px}#tplFilt button.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .stock{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:6px}
 .stock div{position:relative;cursor:pointer;border-radius:3px;overflow:hidden;border:1px solid var(--line2)}
 .stock img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
@@ -339,7 +337,6 @@ input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;bac
     <div class="row" style="padding-left:0"><label>Line in / out</label><select id="tplAnim"></select></div>
     <div class="row" style="padding-left:0"><label>Word being sung</label><select id="tplWord"></select></div>
     <div class="row" style="padding-left:0"><label>Animation length</label><span class="v"><input type="range" id="tplDur" min="0" max="200" value="20" style="width:110px"><span class="scrub" id="tplDurV" style="cursor:default">0.20 s</span></span></div>
-    <div class="flexr" style="gap:4px;margin-top:6px" id="tplFilt"><button class="on" data-f="all">All</button><button data-f="lat">English</button><button data-f="heb">עברית</button></div>
     <div class="thumbs tplGrid" id="tplGrid" style="margin-top:8px"></div>
     <div class="hint">Click a design to put it on all the subtitles. It sets the font, colors, outline, shadow and animation; you can fine-tune everything afterwards in Effects. Ctrl+Z brings back the previous look.</div>
    </div>
@@ -1144,20 +1141,24 @@ const TEMPLATES=[
  ['heKids','Fredoka Kids',{font:'Fredoka',weight:700,sung:'#ffcc00',stroke:7,unsungStroke:'#4a2a00',sungStroke:'#4a2a00',lineAnim:'pop',fade:0.35,wordFx:'bounce'},1],
  ['heHand','Amatic Handwritten',{font:'Amatic SC',weight:700,size:112,sung:'#ffb4d9',stroke:3,unsungStroke:'#330018',sungStroke:'#330018',lineAnim:'cascade',fade:0.8,wordFx:'grow'},1],
  ['heFun','Playpen Fun',{font:'Playpen Sans Hebrew',weight:800,sung:'#9b6bff',sung2:'#ff6bd6',gradOn:true,stroke:5,unsungStroke:'#1b0033',sungStroke:'#1b0033',lineAnim:'flip',fade:0.35,wordFx:'grow'},1]];
-function tplStyle(tp){const o={};TPL_KEYS.forEach(k=>o[k]=DEF_STYLE[k]);Object.assign(o,tp[2]);if(o.sung2===DEF_STYLE.sung2&&!tp[2].sung2)o.sung2=o.sung;if(!tp[2].unsung2)o.unsung2=o.unsung;return o}
+// Hebrew lyrics: designs made with an English-only font switch to the closest Hebrew font
+const HE_EQ={'Montserrat':['Heebo',null,1],'Poppins':['Rubik',null,1],'Anton':['Secular One',400,1.02],'Impact':['Secular One',400,1.02],'Bebas Neue':['Karantina',700,1.18],'Oswald':['Assistant',800,1.05],'Roboto':['Assistant',700,1.04]};
+function lyrHeb(){const t=(P.L||[]).map(x=>x&&x.text||'').join(' ')+' '+(P.text||'');return /[\u0590-\u05FF]/.test(t)}
+function tplStyle(tp,heb){const o={};TPL_KEYS.forEach(k=>o[k]=DEF_STYLE[k]);Object.assign(o,tp[2]);
+ if(heb===undefined)heb=lyrHeb();const eq=heb&&HE_EQ[o.font];if(eq){o.font=eq[0];if(eq[1])o.weight=eq[1];o.size=Math.round(o.size*eq[2])}if(o.sung2===DEF_STYLE.sung2&&!tp[2].sung2)o.sung2=o.sung;if(!tp[2].unsung2)o.unsung2=o.unsung;return o}
 function applyTemplate(id){const tp=TEMPLATES.find(x=>x[0]===id);if(!tp)return;pushUndo();Object.assign(P.style,tplStyle(tp),{tpl:id});
  document.fonts.load(fontStr(72),'אבג abc').then(()=>{S.layoutCache.clear();bump()}).catch(()=>{});S.layoutCache.clear();buildFx();syncTplCtl();markTpl();bump();toast('Template: '+tp[1])}
 function markTpl(){$$('#tplGrid .thumb').forEach(d=>d.classList.toggle('on',d.dataset.id===P.style.tpl))}
 const TPL_SAMPLE={lat:['Sing','it','tonight'],heb:['שירו','איתי','הלילה']};
-function drawTplTile(c,tp,t){const W=c.width,H=c.height,k=2.6;const st=tplStyle(tp);['size','spacing','stroke','shadowBlur','shadowX','shadowY','boxPad','boxRadius'].forEach(q=>st[q]*=k);
- const words=TPL_SAMPLE[tp[3]?'heb':'lat'],per=0.55,s0=0.9,toks=words.map((w,i)=>({t:w,s:s0+i*per,e:s0+(i+1)*per-0.04}));const e=s0+words.length*per,de=e+0.9,cyc=de+0.25;
+function drawTplTile(c,tp,t,heb){const W=c.width,H=c.height,k=2.6;const st=tplStyle(tp,heb);['size','spacing','stroke','shadowBlur','shadowX','shadowY','boxPad','boxRadius'].forEach(q=>st[q]*=k);
+ const words=TPL_SAMPLE[heb?'heb':'lat'],per=0.55,s0=0.9,toks=words.map((w,i)=>({t:w,s:s0+i*per,e:s0+(i+1)*per-0.04}));const e=s0+words.length*per,de=e+0.9,cyc=de+0.25;
  const tt=t%cyc,fd=Math.max(0.01,st.fade);const a=clamp(Math.min((tt+0.001)/fd,(de-tt)/fd),0,1);
  const g=c.getContext('2d');g.setTransform(1,0,0,1,0,0);const bg=g.createLinearGradient(0,0,W,H);bg.addColorStop(0,'#232838');bg.addColorStop(1,'#0b0c12');g.fillStyle=bg;g.fillRect(0,0,W,H);
  if(tt>=de)return;const keepP=P,keepC=S.layoutCache;
  try{P={...P,style:{...keepP.style,...st,lines:1,position:'center',margin:0,dir:'auto',d2shift:0,lfx:{dx:0,dy:0,s:1,r:0}},lines:[toks]};S.layoutCache=new Map();
   drawLine(g,{li:0,s:s0,e,ds:0,de,slot:0},tt,W,H,a,0)}finally{P=keepP;S.layoutCache=keepC}}
 function buildTpl(){const g=$('#tplGrid');if(!g)return;if(!g.children.length){TEMPLATES.forEach(tp=>{const d=document.createElement('div');d.className='thumb';d.dataset.id=tp[0];d.dataset.lang=tp[3]?'heb':'lat';
-  d.innerHTML=`<canvas width="236" height="133"></canvas><span>${tp[1]}</span>`+(tp[3]?'<i class="heb">עב</i>':'');d.title=tp[1]+' · '+tp[2].font+' · '+(LINE_ANIMS.find(a=>a[0]===(tp[2].lineAnim||'fade'))||['',''])[1];d.onclick=()=>applyTemplate(tp[0]);g.appendChild(d)});
+  d.innerHTML=`<canvas width="236" height="133"></canvas><span>${tp[1]}</span>`;d.title=tp[1]+' · '+(LINE_ANIMS.find(a=>a[0]===(tp[2].lineAnim||'fade'))||['',''])[1];d.onclick=()=>applyTemplate(tp[0]);g.appendChild(d)});
   const fill=(sel,opts)=>{sel.innerHTML=opts.map(o=>`<option value="${o[0]}">${o[1]}</option>`).join('')};fill($('#tplAnim'),LINE_ANIMS);fill($('#tplWord'),WORD_FX)}
  syncTplCtl();markTpl()}
 function syncTplCtl(){const st=P.style;$('#tplAnim').value=st.lineAnim||'fade';$('#tplWord').value=st.wordFx||'none';$('#tplDur').value=Math.round(st.fade*100);$('#tplDurV').textContent=(+st.fade).toFixed(2)+' s'}
@@ -1165,9 +1166,8 @@ $('#tplAnim').onchange=e=>{pushUndo();P.style.lineAnim=e.target.value;buildFx();
 $('#tplWord').onchange=e=>{pushUndo();P.style.wordFx=e.target.value;buildFx();bump()};
 $('#tplDur').oninput=e=>{P.style.fade=e.target.value/100;$('#tplDurV').textContent=P.style.fade.toFixed(2)+' s';bump()};
 $('#tplDur').onchange=()=>buildFx();
-$$('#tplFilt button').forEach(b=>b.onclick=()=>{$$('#tplFilt button').forEach(x=>x.classList.toggle('on',x===b));$$('#tplGrid .thumb').forEach(d=>d.style.display=(b.dataset.f==='all'||d.dataset.lang===b.dataset.f)?'':'none')});
-(function tplLoop(){let last=0;const t0=performance.now();const fr=now=>{requestAnimationFrame(fr);const p=$('[data-b="tpl"]');if(!p||!p.classList.contains('on')||document.hidden||now-last<33)return;last=now;const t=(now-t0)/1000;
-  $$('#tplGrid .thumb').forEach((d,i)=>{if(d.style.display==='none')return;const tp=TEMPLATES[i];drawTplTile(d.querySelector('canvas'),tp,t+i*0.37)})};requestAnimationFrame(fr)})();
+(function tplLoop(){let last=0;const t0=performance.now();const fr=now=>{requestAnimationFrame(fr);const p=$('[data-b="tpl"]');if(!p||!p.classList.contains('on')||document.hidden||now-last<33)return;last=now;const t=(now-t0)/1000,heb=lyrHeb();
+  $$('#tplGrid .thumb').forEach((d,i)=>{drawTplTile(d.querySelector('canvas'),TEMPLATES[i],t+i*0.37,heb)})};requestAnimationFrame(fr)})();
 buildTpl();
 $('#vfxAmt').oninput=e=>{P.vfx.amt=e.target.value/100;$('#vfxAmtV').textContent=e.target.value+' %';bump()};
 $('#vfxScope').onchange=e=>{P.vfx.scope=e.target.value;bump()};
