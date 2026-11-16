@@ -94,7 +94,7 @@ function createServer(opts) {
       const outFile = path.join(workDir, j.id + '_align.json');
       const args = ['--align', wav, '--lyrics', lyr, '--out', outFile];
       if (vocals) args.push('--vocals');
-      if (alignDir) args.push('--models', alignDir);
+      if (alignDir) args.push('--models', alignDir, '--cache', path.join(path.dirname(alignDir), 'align-cache'));
       j.msg = 'Starting the timing engine';
       const p = spawn(enginePath, args, { env: toolEnv(), windowsHide: true });
       procs.set(j.id, p);

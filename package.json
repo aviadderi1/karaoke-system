@@ -1,7 +1,7 @@
 {
   "name": "karaoke-system",
   "productName": "Karaoke Lab",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Karaoke video studio with auto-sync, YouTube import and vocal removal.",
   "author": "AD SOUND & SERVICE",
   "license": "UNLICENSED",
@@ -104,7 +104,9 @@
       "category": "public.app-category.music",
       "extendInfo": {
         "NSLocalNetworkUsageDescription": "Karaoke Lab looks for Chromecast TVs on your network so it can show the video on them.",
-        "NSBonjourServices": ["_googlecast._tcp"]
+        "NSBonjourServices": [
+          "_googlecast._tcp"
+        ]
       },
       "icon": "build/icon.png",
       "identity": null,
@@ -115,6 +117,15 @@
     "dmg": {
       "title": "Karaoke Lab ${version}",
       "writeUpdateInfo": false
-    }
+    },
+    "fileAssociations": [
+      {
+        "ext": "kl",
+        "name": "Karaoke Lab Project",
+        "description": "Karaoke Lab project",
+        "role": "Editor",
+        "icon": "kl"
+      }
+    ]
   }
 }

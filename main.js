@@ -18,7 +18,13 @@ const isWin = process.platform === 'win32', isMac = process.platform === 'darwin
 let splash = null, mainWin = null, port = 0, updateInfo = null, closeOk = false;
 
 if (!app.requestSingleInstanceLock()) { app.quit(); }
-app.on('second-instance', () => { if (mainWin) { if (mainWin.isMinimized()) mainWin.restore(); mainWin.focus(); } });
+// .kl project files opened from Explorer / Finder
+let pendingOpen = (process.argv.slice(1).find(a => /\.kl$/i.test(a) && fs.existsSync(a))) || null;
+const openPath = p => { if (!p) return; if (mainWin && !mainWin.isDestroyed() && mainWin.__ready) mainWin.webContents.send('ks:open-path', p); else pendingOpen = p; };
+app.on('open-file', (e, p) => { e.preventDefault(); openPath(p); });
+app.on('second-instance', (_e, argv) => { if (mainWin) { if (mainWin.isMinimized()) mainWin.restore(); mainWin.focus(); } openPath(argv.slice(1).find(a => /\.kl$/i.test(a))); });
+ipcMain.handle('ks:take-open', () => { const p = pendingOpen; pendingOpen = null; if (mainWin) mainWin.__ready = true; return p; });
+ipcMain.handle('ks:read-file', (_e, p) => { try { if (!/\.(kl|json)$/i.test(p)) return null; return fs.readFileSync(p); } catch (e) { return null; } });
 
 const res = (...p) => app.isPackaged ? path.join(process.resourcesPath, ...p) : path.join(__dirname, 'resources', ...p);
 const log = (...a) => { try { fs.appendFileSync(path.join(app.getPath('userData'), 'karaoke-system.log'), new Date().toISOString() + ' ' + a.join(' ') + '\n'); } catch (e) { } };
@@ -27,14 +33,16 @@ ipcMain.on('ks:version', e => { e.returnValue = app.getVersion(); });
 ipcMain.handle('ks:open-external', (_e, url) => { if (/^https?:\/\//.test(url)) shell.openExternal(url); });
 ipcMain.handle('ks:check-updates', () => checkUpdates(true));
 // project files: native Save dialog, remembers the file so the next Save overwrites it
-ipcMain.handle('ks:save-project', async (_e, json, name, saveAs, lastPath) => {
+ipcMain.handle('ks:save-project', async (_e, data, name, saveAs, lastPath) => {
+  if (lastPath && !/\.kl$/i.test(lastPath)) { lastPath = lastPath.replace(/(\.karaoke)?\.json$/i, '') + '.kl'; saveAs = true; }  // old .json projects move to .kl
   let fp = !saveAs && lastPath && fs.existsSync(path.dirname(lastPath)) ? lastPath : null;
   if (!fp) {
-    const r = await dialog.showSaveDialog(mainWin, { title: 'Save project', defaultPath: lastPath || path.join(app.getPath('documents'), name), filters: [{ name: 'Karaoke Lab project', extensions: ['json'] }] });
+    const r = await dialog.showSaveDialog(mainWin, { title: 'Save project', defaultPath: lastPath || path.join(app.getPath('documents'), name), filters: [{ name: 'Karaoke Lab project', extensions: ['kl'] }] });
     if (r.canceled || !r.filePath) return null;
     fp = r.filePath;
+    if (!/\.kl$/i.test(fp)) fp += '.kl';
   }
-  try { fs.writeFileSync(fp, json, 'utf8'); return fp; } catch (e) { dialog.showErrorBox('Karaoke Lab', 'Could not save the project:\n' + e.message); return null; }
+  try { const buf = typeof data === 'string' ? Buffer.from(data, 'utf8') : Buffer.from(data); const tmp = fp + '.saving'; fs.writeFileSync(tmp, buf); fs.renameSync(tmp, fp); return fp; } catch (e) { dialog.showErrorBox('Karaoke Lab', 'Could not save the project:\n' + e.message); return null; }
 });
 ipcMain.handle('ks:manual', async () => {
   const src = path.join(__dirname, 'app', 'manual', 'Karaoke-Lab-User-Manual.pdf');

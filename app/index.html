@@ -504,7 +504,7 @@ input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;bac
 <input type="file" id="fImg" accept="image/*" hidden>
 <input type="file" id="fLogo" accept="image/png,image/*" hidden>
 <input type="file" id="fLyr" accept=".lrc,.txt,text/plain" hidden>
-<input type="file" id="fProj" accept=".json,application/json" hidden>
+<input type="file" id="fProj" accept=".kl,.json" hidden>
 <script>
 'use strict';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -529,9 +529,21 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function tc(t,fps=30){t=Math.max(0,t||0);const h=Math.floor(t/3600),m=Math.floor(t/60)%60,s=Math.floor(t)%60,f=Math.floor((t%1)*fps+1e-6);return [h,m,s,f].map(x=>String(x).padStart(2,'0')).join(':')}
 function sec(t){return (t==null?'—':t.toFixed(3))}
 function toast(msg,ms=2600){const el=$('#toast');el.textContent=msg;el.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('on'),ms)}
-async function saveProject(saveAs){const json=JSON.stringify(projForSave(),null,1),name=safeName()+'.karaoke.json';
- if(window.ksDesktop&&ksDesktop.saveProject){const fp=await ksDesktop.saveProject(json,name,!!saveAs,S.projPath||null);if(!fp)return false;S.projPath=fp;toast('Project saved: '+fp.split(/[\\/]/).pop());return true}
- download(name,json,'application/json');toast('Project saved');return true}
+/* .kl project file: "KLPROJ01" + 4-byte JSON length + JSON + the media files (song, vocal stem, video, image) one after another */
+const KL_MAGIC='KLPROJ01';
+function projMedia(){const m=[];
+ if(S.songFile||S.buf){const f=S.edited&&S.buf?new File([encodeWAV(S.buf)],(S.songFile?S.songFile.name.replace(/\.[^.]+$/,''):'song')+'.wav',{type:'audio/wav'}):S.songFile;if(f)m.push({key:'song',name:f.name,type:f.type||'',blob:f})}
+ if(S.vocBuf)m.push({key:'vocals',name:'vocals.wav',type:'audio/wav',blob:new Blob([encodeWAV(S.vocBuf)]),mix:S.mix||'guide'});
+ if(S.vidBlob)m.push({key:'video',name:S.vidMeta.name,type:S.vidBlob.type||'',blob:S.vidBlob,isClip:S.vidMeta.isClip});
+ if(S.imgFile)m.push({key:'image',name:S.imgFile.name||'image',type:S.imgFile.type||'',blob:S.imgFile});
+ return m}
+async function buildProjectFile(){const media=projMedia();const j={...projForSave(),klVersion:1,media:media.map(({blob,...r})=>({...r,size:blob.size}))};
+ const js=new TextEncoder().encode(JSON.stringify(j));const head=new Uint8Array(12);head.set(new TextEncoder().encode(KL_MAGIC));new DataView(head.buffer).setUint32(8,js.length);
+ return new Blob([head,js,...media.map(x=>x.blob)])}
+async function saveProject(saveAs){const name=safeName()+'.kl';let blob;
+ try{toast('Saving the project…',20000);blob=await buildProjectFile()}catch(e){toast('Could not save: '+e.message);return false}
+ if(window.ksDesktop&&ksDesktop.saveProject){const fp=await ksDesktop.saveProject(await blob.arrayBuffer(),name,!!saveAs,S.projPath||null);if(!fp){toast('Save cancelled',1200);return false}S.projPath=fp;S.savedVer=S.ver;toast('Project saved: '+fp.split(/[\\/]/).pop());return true}
+ download(name,blob);S.savedVer=S.ver;toast('Project saved');return true}
 function askClose(){if($('#modal').classList.contains('on')&&$('#acSave'))return;
  modal(`<h3><i class="ti ti-device-floppy"></i> Save the project before closing?</h3><div class="muted" style="margin:6px 0 14px">${esc(P.title||P.artist?((P.artist?P.artist+' – ':'')+P.title):'Untitled project')}. If you don't save, changes since your last save will be lost.</div>
  <div style="display:flex;justify-content:space-between;gap:6px"><button id="acNo">Don't save</button><span class="flexr"><button id="acCancel">Cancel</button><button class="pri" id="acSave"><i class="ti ti-device-floppy"></i>Save</button></span></div>`);
@@ -629,20 +641,20 @@ function calcPeaks(buf){const ch=buf.getChannelData(0),ch2=buf.numberOfChannels>
   const step=Math.floor(buf.sampleRate/S.peakRate),n=Math.ceil(ch.length/step),pk=new Float32Array(n);
   for(let i=0;i<n;i++){let m=0;const o=i*step,e=Math.min(ch.length,o+step);for(let k=o;k<e;k+=2){const v=Math.max(Math.abs(ch[k]),ch2?Math.abs(ch2[k]):0);if(v>m)m=v}pk[i]=Math.min(1,m)}
   return pk}
-function loadSong(file){ensureAudio();S.inP=S.outP=null;S.edited=false;setVoc(null);aud.src=URL.createObjectURL(file);S.songFile=file;$('#songName').textContent=file.name;
+function loadSong(file,quiet){ensureAudio();S.inP=S.outP=null;S.edited=false;setVoc(null);aud.src=URL.createObjectURL(file);S.songFile=file;$('#songName').textContent=file.name;
  aud.onloadedmetadata=()=>{$('#songInfo').textContent=`${tc(aud.duration)} · ${(file.size/1048576).toFixed(1)} MB`;S.duration=aud.duration;routeAudio();zoomFit();updateDur()};
  if(P.audioSource==='video'){P.audioSource='song';$('#audioSrc').value='song'}
  computePeaks(file);
  if(!P.title&&!P.artist){const nm=file.name.replace(/\.[^.]+$/,'');const m=nm.split(/\s+-\s+/);if(m.length>=2){P.artist=m[0];P.title=m.slice(1).join(' - ')}else P.title=nm;$('#artist').value=P.artist;$('#title').value=P.title;updateName();save()}
- toast('Song imported');
+ if(!quiet)toast('Song imported');
 }
-function loadVideo(src,name,isClip,file){ensureAudio();vid.crossOrigin=null;vid.src=src;vid.loop=!isClip;S.vidIsClip=!!isClip;$('#vidName').textContent=name;
+function loadVideo(src,name,isClip,file){ensureAudio();S.vidBlob=file||null;S.vidMeta={name,isClip:!!isClip};vid.crossOrigin=null;vid.src=src;vid.loop=!isClip;S.vidIsClip=!!isClip;$('#vidName').textContent=name;
  vid.onloadedmetadata=()=>{$('#vidInfo').textContent=`${vid.videoWidth}×${vid.videoHeight} · ${tc(vid.duration)}`;if(isClip&&!aud.src){P.audioSource='video';$('#audioSrc').value='video';S.duration=vid.duration;zoomFit();updateDur()}routeAudio();syncVid(true)};
  vid.onerror=()=>toast('That video could not be loaded');
  P.bg.type='video';buildBgCtl();markThumb();bump();
  if(isClip&&file&&!aud.src)computePeaks(file,'video');
 }
-function loadImage(file){const img=new Image();img.onload=()=>{S.imgEl=img;P.bg.type='image';buildBgCtl();markThumb();bump();toast('Background image set')};img.src=URL.createObjectURL(file)}
+function loadImage(file,quiet){S.imgFile=file;const img=new Image();img.onload=()=>{S.imgEl=img;if(!quiet)P.bg.type='image';buildBgCtl();markThumb();bump();if(!quiet)toast('Background image set')};img.src=URL.createObjectURL(file)}
 function updateDur(){const m=master();const d=(m&&m.duration)||S.duration||lastTime()+5;$('#dur').textContent=tc(d)}
 function totalDur(){const m=master();return Math.max((m&&isFinite(m.duration)&&m.duration)||0,S.duration||0,lastTime()+5,30)}
 function lastTime(){let t=0;for(const f of S.flat){if(f.tok.e!=null&&f.tok.e>t)t=f.tok.e;else if(f.tok.s!=null&&f.tok.s>t)t=f.tok.s}return t}
@@ -1447,7 +1459,7 @@ $$('.menu>span').forEach(s=>s.onmouseenter=()=>{if($('.menu.open')&&!s.parentEle
 addEventListener('click',()=>$$('.menu').forEach(x=>x.classList.remove('open')));
 document.addEventListener('click',e=>{const a=e.target.closest('[data-a]');if(a){$$('.menu').forEach(x=>x.classList.remove('open'));act(a.dataset.a)}});
 function act(a){switch(a){
- case 'new':if(confirm('Start a new project? Unsaved changes are lost.')){P=newProject();S.projPath=null;refreshAll();resetUndo()}break;
+ case 'new':if(confirm('Start a new project? Unsaved changes are lost.')){P=newProject();S.projPath=null;clearMedia();refreshAll();resetUndo()}break;
  case 'open':$('#fProj').click();break;case 'save':saveProject(false);break;case 'saveAs':saveProject(true);break;
  case 'impSong':$('#fSong').click();break;case 'impLogo':$('#fLogo').click();break;case 'impVideo':$('#fVid').dataset.bg='';$('#fVid').click();break;case 'impLyrics':$('#fLyr').click();break;
  case 'expAss':exportASS();break;case 'expLrc':exportLRC();break;case 'render':workspace('export');renderVideo();break;
@@ -1507,7 +1519,19 @@ $('#fImg').onchange=e=>{const f=e.target.files[0];if(f)loadImage(f);e.target.val
 $('#fLyr').onchange=async e=>{const f=e.target.files[0];if(f)await importLyrFile(f);e.target.value=''};
 $('#fProj').onchange=async e=>{const f=e.target.files[0];if(f)await openProject(f);e.target.value=''};
 async function importLyrFile(f){const txt=await f.text();pushUndo();if(/\[\d+:\d+/.test(txt))importLRC(txt);else{$('#lyr').value=txt;applyText(txt,false)}workspace('lyrics');toast('Lyrics imported')}
-async function openProject(f){try{const j=JSON.parse(await f.text());P=Object.assign(newProject(),j);P.style=Object.assign({},DEF_STYLE,j.style);P.bg=Object.assign({},DEF_BG,j.bg);P.vfx=Object.assign({},DEF_VFX,j.vfx);S.projPath=(f&&f.path)||null;refreshAll();resetUndo();toast('Project opened. Re-import the song and video.')}catch(e){toast('That file is not a Karaoke Lab project')}}
+async function openProject(f,path){try{toast('Opening the project…',20000);const ab=await f.arrayBuffer(),u8=new Uint8Array(ab);let j,media=[],off=0;
+ if(new TextDecoder().decode(u8.subarray(0,8))===KL_MAGIC){const n=new DataView(ab).getUint32(8);j=JSON.parse(new TextDecoder().decode(u8.subarray(12,12+n)));off=12+n;media=(j.media||[]).map(m=>{const b=new Blob([u8.subarray(off,off+m.size)],{type:m.type||''});off+=m.size;return {...m,blob:b}});delete j.media;delete j.klVersion}
+ else j=JSON.parse(new TextDecoder().decode(u8));
+ pause();P=Object.assign(newProject(),j);P.style=Object.assign({},DEF_STYLE,j.style);P.bg=Object.assign({},DEF_BG,j.bg);P.vfx=Object.assign({},DEF_VFX,j.vfx);S.projPath=path||(window.ksDesktop&&ksDesktop.pathForFile?ksDesktop.pathForFile(f):null)||null;
+ clearMedia();refreshAll();resetUndo();
+ const get=k=>media.find(m=>m.key===k);const sg=get('song'),vc=get('vocals'),vd=get('video'),im=get('image');
+ if(sg){loadSong(new File([sg.blob],sg.name,{type:sg.type}),true);if(vc){ensureAudio();const vb=await AC.decodeAudioData(await vc.blob.arrayBuffer());setVoc(vb);setMix(vc.mix||'guide',true)}}
+ if(im)loadImage(new File([im.blob],im.name,{type:im.type}),true);
+ if(vd)loadVideo(URL.createObjectURL(vd.blob),vd.name,!!vd.isClip,vd.blob);
+ P.bg=Object.assign({},DEF_BG,j.bg);buildBgCtl();markThumb();refreshAll();resetUndo();S.savedVer=S.ver;
+ toast(media.length?'Project opened':'Project opened. This older project file has no media saved in it: import the song again.',media.length?2600:6000)}catch(e){console.error(e);toast('That file is not a Karaoke Lab project')}}
+function clearMedia(){try{pause()}catch(e){}setVoc(null);S.songFile=null;S.buf=null;S.peaks=null;S.edited=false;aud.removeAttribute('src');aud.load();$('#songName').textContent='No song loaded';$('#songInfo').textContent='';
+ S.vidBlob=null;S.vidMeta=null;vid.removeAttribute('src');vid.load();$('#vidName').textContent='No video loaded';$('#vidInfo').textContent='';S.imgFile=null;S.imgEl=null;drawTL()}
 // stock video
 $('#pexKey').value=localStorage.getItem('ks_pexels')||'';$('#pexKey').onchange=e=>localStorage.setItem('ks_pexels',e.target.value.trim());
 $('#pexHelp').onclick=()=>modal(`<h3>Free Pexels API key</h3><ol style="line-height:1.8"><li>Open <a href="https://www.pexels.com/api/" target="_blank" style="color:var(--acc)">pexels.com/api</a> and sign up (free).</li><li>Click "Your API key" and copy it.</li><li>Paste it into the key field here. It's stored only in this browser.</li></ol><p class="muted">Pexels videos are free to use, including commercially.</p><div style="text-align:right"><button onclick="closeModal()">Close</button></div>`);
@@ -1519,7 +1543,7 @@ async function pexSearch(){const key=$('#pexKey').value.trim();if(!key){$('#pexH
  catch(e){box.innerHTML=`<span class="muted small">Search failed (${e.message}). Check the API key.</span>`}}
 async function loadStock(v){const files=(v.video_files||[]).filter(f=>f.file_type==='video/mp4'&&f.width).sort((a,b)=>Math.abs(a.width-1920)-Math.abs(b.width-1920));const f=files[0];if(!f)return toast('No MP4 file in this result');await loadUrlVideo(f.link,'Pexels #'+v.id,v.url)}
 async function loadUrlVideo(link,name,page){toast('Downloading background video…',6000);
- try{const r=await fetch(link);if(!r.ok)throw 0;const b=await r.blob();loadVideo(URL.createObjectURL(b),name,false);toast('Background video ready')}
+ try{const r=await fetch(link);if(!r.ok)throw 0;const b=await r.blob();loadVideo(URL.createObjectURL(b),name,false,b);toast('Background video ready')}
  catch(e){const tv=document.createElement('video');tv.crossOrigin='anonymous';tv.src=link;tv.onloadeddata=()=>{vid.crossOrigin='anonymous';vid.src=link;vid.loop=true;S.vidIsClip=false;$('#vidName').textContent=name;P.bg.type='video';buildBgCtl();markThumb();bump();toast('Background video ready')};
   tv.onerror=()=>{toast('This site blocks direct loading. Download the video and import it.',5000);if(page)window.open(page,'_blank')}}}
 $('#vurlBtn').onclick=()=>{const u=$('#vurl').value.trim();if(u)loadUrlVideo(u,u.split('/').pop().split('?')[0],u)};
@@ -1527,7 +1551,7 @@ $('#vurlBtn').onclick=()=>{const u=$('#vurl').value.trim();if(u)loadUrlVideo(u,u
 let dc=0;addEventListener('dragenter',e=>{e.preventDefault();dc++;$('#drop').classList.add('on')});addEventListener('dragleave',e=>{dc--;if(dc<=0){dc=0;$('#drop').classList.remove('on')}});addEventListener('dragover',e=>e.preventDefault());
 addEventListener('drop',async e=>{e.preventDefault();dc=0;$('#drop').classList.remove('on');for(const f of e.dataTransfer.files){const n=f.name.toLowerCase();
  if(f.type.startsWith('audio/')||/\.(mp3|wav|m4a|flac|ogg|aac)$/.test(n))loadSong(f);else if(f.type.startsWith('video/')||/\.(mp4|mov|webm|mkv)$/.test(n)){loadVideo(URL.createObjectURL(f),f.name,true,f);toast('Video imported as clip')}
- else if(f.type.startsWith('image/'))loadImage(f);else if(/\.(lrc|txt)$/.test(n))await importLyrFile(f);else if(/\.json$/.test(n))await openProject(f)}});
+ else if(f.type.startsWith('image/'))loadImage(f);else if(/\.(lrc|txt)$/.test(n))await importLyrFile(f);else if(/\.(json|kl)$/.test(n))await openProject(f)}});
 // keyboard
 function inField(e){const t=e.target;return t&&(t.tagName==='TEXTAREA'||(t.tagName==='INPUT'&&!['checkbox','range','color'].includes(t.type))||t.tagName==='SELECT')}
 function onKey(e){
@@ -1646,6 +1670,13 @@ function openAutoSync(){if(!S.flat.length)return toast('Add the lyrics first (Ly
 function asStep(html){$('#asSteps').innerHTML=html}
 /* ---------- precise auto-sync: forced alignment in the desktop engine ---------- */
 function monoBuffer(b){if(b.numberOfChannels===1)return b;const o=new AudioBuffer({length:b.length,numberOfChannels:1,sampleRate:b.sampleRate});const d=o.getChannelData(0);for(let c=0;c<b.numberOfChannels;c++){const x=b.getChannelData(c);for(let i=0;i<d.length;i++)d[i]+=x[i]/b.numberOfChannels}return o}
+// time left, measured only on the step that is running now (engine start-up and the one-time model download don't count)
+function etaText(E,p,msg){const now=Date.now()/1000,key=msg.replace(/\s*\d+%.*$/,'');
+ if(/Downloading|mirror|Waiting|Starting/.test(msg)||p<=0){E.key=null;return ''}
+ if(E.key!==key){E.key=key;E.t=now;E.p=p;E.left=null;return ' · estimating time…'}
+ const dt=now-E.t,dp=p-E.p;if(dt<6||dp<0.01)return E.left==null?' · estimating time…':fmtLeft(E.left);
+ const raw=(1-p)*dt/dp;E.left=E.left==null?raw:E.left*0.7+raw*0.3;return fmtLeft(E.left)}
+function fmtLeft(s){return ` · about ${s>90?Math.round(s/60)+' min':Math.max(5,Math.round(s/5)*5)+' s'} left`}
 async function runPrecise(opt){
  $('#asProg').style.display='';$('#asGo').disabled=true;S.asRunning=true;const useVoc=!!S.vocBuf;
  const steps=[...(useVoc?[]:['Separating the vocals from the music']),'Loading the timing model','Listening to the vocals','Matching the lyrics to the singing'];
@@ -1655,9 +1686,9 @@ async function runPrecise(opt){
   if(!await helperStatus(false))throw new Error('The timing engine is not running.');
   const toks=S.flat.map(f=>f.tok);const words=toks.map(t=>t.t),lines=S.flat.map(f=>f.li);
   const wav=encodeWAV(useVoc?monoBuffer(S.vocBuf):S.buf);const js=new TextEncoder().encode(JSON.stringify({words,lines}));const head=new Uint8Array(4);new DataView(head.buffer).setUint32(0,js.length);
-  const r=await (await fetch(HELPER+'/align?vocals='+(useVoc?1:0),{method:'POST',body:new Blob([head,js,wav])})).json();if(!r.job)throw new Error(r.error||'The engine did not accept the job');S.alignJob=r.job;const t0=Date.now();
+  const r=await (await fetch(HELPER+'/align?vocals='+(useVoc?1:0),{method:'POST',body:new Blob([head,js,wav])})).json();if(!r.job)throw new Error(r.error||'The engine did not accept the job');S.alignJob=r.job;const t0=Date.now(),E={};
   const res=await waitJob(r.job,j=>{if(!S.asRunning)return;const m=j.msg||'';let i=steps.findIndex(t=>m.startsWith(t.split(' ').slice(0,2).join(' ')));if(/Downloading/.test(m))i=steps.indexOf('Loading the timing model');if(i<0)i=0;
-   let eta='';if(j.progress>0.04){const el=(Date.now()-t0)/1000,left=el/j.progress-el;eta=` · about ${left>90?Math.round(left/60)+' min':Math.round(left)+' s'} left`}
+   const eta=etaText(E,j.progress||0,m);
    show(i,` <span class="muted">${/Downloading|mirror|Waiting/.test(m)?esc(m):Math.round((j.progress||0)*100)+'%'+eta}</span>`);$('#asBar').style.width=((j.progress||0)*100)+'%'});
   S.alignJob=null;if(!S.asRunning)return;
   pushUndo();const st=applyPrecise(res.words||[],opt.keep);S.asRunning=false;bump();updateStats();drawTL();
@@ -2131,6 +2162,10 @@ $('#awIn').addEventListener('blur',()=>setTimeout(()=>{if($('#awBox').classList.
 tl.addEventListener('dragover',e=>{if(!S.bgDrag)return;e.preventDefault();e.dataTransfer.dropEffect='copy';const r=tl.getBoundingClientRect();S.bgDropX=e.clientX-r.left;drawTL()});
 tl.addEventListener('dragleave',()=>{S.bgDropX=null;drawTL()});
 tl.addEventListener('drop',e=>{const d=e.dataTransfer.getData('text/plain')||'';if(!d.startsWith('kl-bg:'))return;e.preventDefault();const r=tl.getBoundingClientRect();const t=Math.max(0,x2t(e.clientX-r.left));S.bgDrag=null;S.bgDropX=null;const id=d.slice(6);if(id==='image'&&!S.imgEl)return toast('Load an image first: Backgrounds → My media → Image');if(id==='video'&&!vid.src)return toast('Load a video first: Backgrounds → My media → Video');addBgClip(t,id)});
+
+// .kl files opened from Explorer / Finder (double-click, or "Open with")
+async function openPathFromOS(p){if(!p||!window.ksDesktop||!ksDesktop.readFile)return;const b=await ksDesktop.readFile(p);if(!b){toast('Could not read '+p);return}await openProject(new File([b],p.split(/[\\/]/).pop()),p)}
+if(window.ksDesktop&&ksDesktop.takeOpenFile){ksDesktop.onOpenPath(openPathFromOS);ksDesktop.takeOpenFile().then(openPathFromOS).catch(()=>{})}
 
 // lyrics layout is measured with the real font once it has loaded
 try{document.fonts.ready.then(()=>{document.fonts.load(fontStr(72),'אבג abc').then(()=>bump())})}catch(e){}

@@ -1,5 +1,5 @@
 'use strict';
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('ksDesktop', {
   version: ipcRenderer.sendSync('ks:version'),
@@ -11,7 +11,11 @@ contextBridge.exposeInMainWorld('ksDesktop', {
   onSplash: cb => ipcRenderer.on('ks:splash', (_e, info) => cb(info)),
   openLyricsWeb: q => ipcRenderer.invoke('ks:lyrics-web', q),
   onLyricsText: cb => ipcRenderer.on('ks:lyrics-text', (_e, t) => cb(t)),
-  saveProject: (json, name, saveAs, lastPath) => ipcRenderer.invoke('ks:save-project', json, name, saveAs, lastPath),
+  saveProject: (data, name, saveAs, lastPath) => ipcRenderer.invoke('ks:save-project', data, name, saveAs, lastPath),
+  pathForFile: f => { try { return webUtils.getPathForFile(f) || null; } catch (e) { return null; } },
+  readFile: p => ipcRenderer.invoke('ks:read-file', p),
+  takeOpenFile: () => ipcRenderer.invoke('ks:take-open'),
+  onOpenPath: cb => ipcRenderer.on('ks:open-path', (_e, p) => cb(p)),
   onAskClose: cb => ipcRenderer.on('ks:ask-close', () => cb()),
   closeOk: () => ipcRenderer.send('ks:close-ok'),
   onEdit: cb => ipcRenderer.on('ks:edit', (_e, a) => cb(a)),
