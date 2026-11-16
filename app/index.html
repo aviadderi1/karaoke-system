@@ -863,10 +863,66 @@ function drawCountdown(ctx,c,t,W,H){
   for(let i=0;i<rem;i++){const cx=x0+dir*i*gap;ctx.beginPath();ctx.arc(cx,A.cy,r,0,Math.PI*2);shadow();ctx.fillStyle=st.cdColor;ctx.fill();ctx.shadowColor='transparent';ctx.lineWidth=Math.max(2,r*0.22);ctx.strokeStyle=st.cdStroke;ctx.stroke()}
   const xa=Math.min(x0,x0+dir*total)-r,xb=Math.max(x0,x0+dir*total)+r;box={x:xa,y:A.cy-r,w:xb-xa,h:r*2}}
  ctx.restore();if(ctx===mctx)S.cdBox={...box,cx:A.cx,cy:A.cy}}
+const LOGO_FX_DEF={anim:'fade',animSpeed:1,loop:'none',loopAmt:0.5,rot:0,blend:'source-over',shOn:false,shColor:'#000000',shOpacity:0.6,shBlur:14,shX:5,shY:5,glow:0,glowColor:'#ffffff'};
+const LOGO_ANIMS=TITLE_ANIMS.filter(a=>!WORD_ANIMS[a[0]]&&a[0]!=='stretch');
+const LOGO_LOOPS=[['none','None'],['pulse','Pulse'],['heartbeat','Heartbeat'],['float','Float'],['sway','Sway'],['spin','Spin'],['swing3d','Turn (3D)'],['shine','Shine sweep'],['flash','Flash']];
+let logoOff=null;
+// draws the logo image with its effects; k = in/out progress (1 = fully shown)
+function paintLogo(ctx,img,g,cx,cy,w,h,k,t,W,H){const o=Object.assign({},LOGO_FX_DEF,g),sc=W/1920;const f=titleFx(o.anim,k,0,W,H,t);
+ let s=f.s,r=f.r+(o.rot||0)*Math.PI/180,dx=f.dx,dy=f.dy,sx=f.sx,sy=f.sy,a=f.a,am=o.loopAmt,sh=0;const lt=t*(o.animSpeed||1);
+ switch(o.loop){case 'pulse':s*=1+0.08*am*Math.sin(lt*Math.PI*1.6);break;
+  case 'heartbeat':{const q=(lt*1.1)%1;s*=1+0.12*am*(Math.exp(-Math.pow((q-0.1)/0.05,2))+0.6*Math.exp(-Math.pow((q-0.3)/0.05,2)));break}
+  case 'float':dy+=Math.sin(lt*Math.PI*0.9)*h*0.08*am;break;
+  case 'sway':r+=Math.sin(lt*Math.PI*0.9)*0.18*am;break;
+  case 'spin':r+=lt*Math.PI*0.6*am;break;
+  case 'swing3d':sx*=Math.cos(lt*Math.PI*0.6*(0.4+am))||0.001;break;
+  case 'shine':sh=((lt*0.45)%1.6)-0.3;break;
+  case 'flash':a*=0.55+0.45*(0.5+0.5*Math.cos(lt*Math.PI*2*(0.3+am)));break}
+ if(a<=0.001)return;
+ let src=img;if(o.loop==='shine'&&sh>-0.3&&sh<1.3){if(!logoOff)logoOff=document.createElement('canvas');const ow=Math.max(2,Math.round(w)),oh=Math.max(2,Math.round(h));logoOff.width=ow;logoOff.height=oh;const q=logoOff.getContext('2d');q.drawImage(img,0,0,ow,oh);q.globalCompositeOperation='source-atop';
+  const x0=(sh-0.25)*(ow+oh),gr=q.createLinearGradient(x0,0,x0+(ow+oh)*0.5*(0.4+am*0.6),oh*0.6);gr.addColorStop(0,'rgba(255,255,255,0)');gr.addColorStop(0.5,'rgba(255,255,255,0.75)');gr.addColorStop(1,'rgba(255,255,255,0)');q.fillStyle=gr;q.fillRect(0,0,ow,oh);src=logoOff}
+ ctx.save();ctx.globalCompositeOperation=o.blend||'source-over';ctx.translate(cx+dx,cy+dy);ctx.rotate(r);ctx.scale(s*sx,s*sy);ctx.globalAlpha=clamp(o.opacity*a,0,1);if(f.blur>0.3)ctx.filter=`blur(${f.blur}px)`;
+ if(f.clip){ctx.beginPath();const p=f.clip.p;if(f.clip.mode==='wipe')ctx.rect(-w/2-2,-h/2-2,(w+4)*p,h+4);else ctx.rect(-(w/2+2)*p,-h/2-2,(w+4)*p,h+4);ctx.clip()}
+ const draw=()=>ctx.drawImage(src,-w/2,-h/2,w,h);
+ if(f.glitch){const j=w*0.03*f.glitch;ctx.save();ctx.globalAlpha*=0.6;ctx.translate(-j,0);draw();ctx.translate(2*j,0);draw();ctx.restore()}
+ if(o.glow>0||f.glow){ctx.save();ctx.shadowColor=o.glowColor;ctx.shadowBlur=Math.max(o.glow,f.glow?0.6:0)*60*sc*Math.max(1,w/(400*sc));draw();draw();ctx.restore()}
+ if(o.shOn){ctx.shadowColor=hexA(o.shColor,o.shOpacity);ctx.shadowBlur=o.shBlur*sc;ctx.shadowOffsetX=o.shX*sc;ctx.shadowOffsetY=o.shY*sc}
+ draw();ctx.restore()}
 function drawLogo(ctx,t,W,H){const g=P.logo,img=S.logoImg;if(!g||!img||!img.complete||!img.naturalWidth){if(ctx===mctx)S.logoBox=null;return}
- const t1=g.t1!=null?g.t1:1e9;if(t<(g.t0||0)||t>=t1){if(ctx===mctx)S.logoBox=null;return}
- const w=g.scale*W,h=w*img.naturalHeight/img.naturalWidth,x=g.x*W-w/2,y=g.y*H-h/2;const fa=Math.min(1,(t-(g.t0||0))/0.4+(g.t0?0:1),(t1-t)/0.4);
- ctx.save();ctx.globalAlpha=clamp(g.opacity*fa,0,1);ctx.drawImage(img,x,y,w,h);ctx.restore();if(ctx===mctx)S.logoBox={x,y,w,h}}
+ const t0=g.t0||0,t1=g.t1!=null?g.t1:Math.max(totalDur(),t0+1);if(t<t0||t>=(g.t1!=null?g.t1:1e9)){if(ctx===mctx)S.logoBox=null;return}
+ const sp=clamp(g.animSpeed||1,0.1,5),anim=g.anim||'fade';const dIn=(anim==='fade'&&g.anim==null?0.4:0.9)/sp,dOut=0.6/sp;
+ const k=clamp(Math.min(t0===0&&g.anim==null?1:(t-t0)/dIn,(t1-t)/dOut),0,1);
+ const w=g.scale*W,h=w*img.naturalHeight/img.naturalWidth,x=g.x*W-w/2,y=g.y*H-h/2;
+ paintLogo(ctx,img,g,g.x*W,g.y*H,w,h,k,t,W,H);if(ctx===mctx)S.logoBox={x,y,w,h}}
+function openLogoFx(){const g=P.logo;if(!g||!S.logoImg)return;pushUndo();Object.keys(LOGO_FX_DEF).forEach(k=>{if(g[k]==null)g[k]=LOGO_FX_DEF[k]});const keep=JSON.stringify(g);
+ modal(`<h3><i class="ti ti-badge"></i> Logo animation &amp; effects</h3>
+ <div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px">
+  <div><div class="muted" style="margin-bottom:6px">Animation in / out</div><div class="thumbs" id="laGrid" style="grid-template-columns:repeat(4,1fr);max-height:56vh;overflow:auto"></div></div>
+  <div id="laCtl" style="max-height:62vh;overflow:auto"></div></div>
+ <div class="hint">The logo animates in where its clip starts on V4 and animates out where it ends. Changes show on the monitor straight away.</div>
+ <div style="display:flex;gap:6px;margin-top:12px"><button id="laImg"><i class="ti ti-photo-edit"></i>Edit image (remove background, frame)…</button><span style="flex:1"></span><button id="laReset">Reset</button><button id="laCancel">Cancel</button><button class="pri" id="laOk"><i class="ti ti-check"></i>Apply</button></div>`);
+ $('#modalBox').style.width='1000px';const gr=$('#laGrid');
+ LOGO_ANIMS.forEach(([id,name])=>{const d=document.createElement('div');d.className='thumb'+(id===g.anim?' on':'');d.dataset.id=id;d.innerHTML=`<canvas width="240" height="135"></canvas><span>${name}</span>`;d.onclick=()=>{g.anim=id;$$('#laGrid .thumb').forEach(x=>x.classList.toggle('on',x===d));bump()};gr.appendChild(d)});
+ const schema=[['Motion','mo',[{k:'animSpeed',label:'Animation speed',type:'num',min:0.25,max:3,step:0.05,dec:2,unit:'×'},{k:'loop',label:'Loop effect',type:'select',opts:LOGO_LOOPS},{k:'loopAmt',label:'Loop strength',type:'num',min:0,max:1,step:0.01,pct:true}]],
+  ['Placement','pos',[{k:'scale',label:'Size',type:'num',min:0.02,max:1,step:0.005,pct:true},{k:'x',label:'Position X',type:'num',min:0,max:1,step:0.005,pct:true},{k:'y',label:'Position Y',type:'num',min:0,max:1,step:0.005,pct:true},{k:'rot',label:'Rotation',type:'num',min:-180,max:180,step:1,unit:'°'},{k:'opacity',label:'Opacity',type:'num',min:0.05,max:1,step:0.01,pct:true},{k:'blend',label:'Blend',type:'select',opts:[['source-over','Normal'],['screen','Screen'],['lighter','Add (light)'],['multiply','Multiply'],['overlay','Overlay'],['soft-light','Soft light']]}]],
+  ['Drop shadow','shd',[{k:'shOn',label:'Shadow',type:'check'},{k:'shColor',label:'Color',type:'color'},{k:'shOpacity',label:'Opacity',type:'num',min:0,max:1,step:0.01,pct:true},{k:'shBlur',label:'Softness',type:'num',min:0,max:80,step:1,unit:'px'},{k:'shX',label:'Offset X',type:'num',min:-60,max:60,step:1,unit:'px'},{k:'shY',label:'Offset Y',type:'num',min:-60,max:60,step:1,unit:'px'}]],
+  ['Glow','glw',[{k:'glow',label:'Glow',type:'num',min:0,max:1,step:0.01,pct:true},{k:'glowColor',label:'Glow color',type:'color'}]]];
+ const mem=new Set(['Motion','Placement']);const build=()=>buildControls($('#laCtl'),schema,g,(k,rb)=>{bump();if(rb)build()},mem);build();
+ const pos=document.createElement('div');pos.className='flexr';pos.style.cssText='flex-wrap:wrap;gap:4px;margin:6px 0 2px';
+ [['Top left',0.14,0.12],['Top',0.5,0.12],['Top right',0.86,0.12],['Center',0.5,0.5],['Bottom left',0.14,0.88],['Bottom right',0.86,0.88]].forEach(([n,x,y])=>{const b=document.createElement('button');b.textContent=n;b.style.cssText='padding:2px 7px;font-size:11px';b.onclick=()=>{g.x=x;g.y=y;bump();build()};pos.appendChild(b)});
+ $('#laCtl').prepend(pos);
+ const t0=performance.now(),tiles=[...gr.querySelectorAll('.thumb')],img=S.logoImg;
+ const frame=()=>{if(!$('#modal').classList.contains('on')||!$('#laGrid'))return;const now=(performance.now()-t0)/1000,sp=g.animSpeed||1,dIn=0.9/sp,dOut=0.6/sp,hold=1.2,cyc=dIn+hold+dOut+0.3;
+  tiles.forEach((d,i)=>{const cv=d.querySelector('canvas'),c=cv.getContext('2d'),W=cv.width,H=cv.height;const lt=(now+i*0.07)%cyc;const k=clamp(Math.min(lt/dIn,(dIn+hold+dOut-lt)/dOut),0,1);
+   const bg=c.createLinearGradient(0,0,W,H);bg.addColorStop(0,'#1d2333');bg.addColorStop(1,'#0b0c12');c.globalCompositeOperation='source-over';c.globalAlpha=1;c.filter='none';c.fillStyle=bg;c.fillRect(0,0,W,H);
+   const w=W*0.42,h=w*img.naturalHeight/img.naturalWidth,hh=Math.min(h,H*0.62),ww=hh*img.naturalWidth/img.naturalHeight;const gg={...g,anim:d.dataset.id,rot:g.rot};
+   if(k>0)paintLogo(c,img,gg,W/2,H/2,ww,hh,k,now,W,H)});
+  requestAnimationFrame(frame)};frame();
+ const done=()=>{closeModal();$('#modalBox').style.width='';buildLogoCtl();drawTL()};
+ $('#laReset').onclick=()=>{Object.assign(g,LOGO_FX_DEF);$$('#laGrid .thumb').forEach(x=>x.classList.toggle('on',x.dataset.id===g.anim));build();bump()};
+ $('#laCancel').onclick=()=>{Object.assign(g,JSON.parse(keep));bump();done()};
+ $('#laOk').onclick=()=>{bump();done();toast('Logo: '+(LOGO_ANIMS.find(a=>a[0]===g.anim)||['',''])[1]+(g.loop!=='none'?' · '+LOGO_LOOPS.find(a=>a[0]===g.loop)[1]:''))};
+ $('#laImg').onclick=()=>{bump();done();openLogoEditor()}}
 
 /* ---------- backgrounds ---------- */
 function rnd(i){const x=Math.sin(i*127.1+311.7)*43758.5453;return x-Math.floor(x)}
@@ -1039,9 +1095,9 @@ const BG_SCHEMA=b=>[['Background','bg',[
  {k:'beat',label:'React to the beat',type:'check'},{k:'beatAmt',label:'Beat amount',type:'num',min:0,max:3,step:0.05,dec:2}]],
  ['Adjust','adj',[{k:'darken',label:'Darken',type:'num',min:0,max:0.9,step:0.01,pct:true},{k:'blur',label:'Blur',type:'num',min:0,max:40,step:0.5,dec:1,unit:'px'},{k:'vignette',label:'Vignette',type:'num',min:0,max:1,step:0.01,pct:true}]]];
 function buildLogoCtl(){const box=$('#logoCtl');const g=P.logo;
- box.innerHTML=`<div class="flexr" style="justify-content:space-between"><span class="muted"><i class="ti ti-badge"></i> Logo</span><button id="lgAdd"><i class="ti ti-photo-plus"></i>${g?'Replace logo':'Add logo'}</button></div>${g?'<div class="flexr" style="margin-top:6px;flex-wrap:wrap"><button id="lgEdit"><i class="ti ti-photo-edit"></i>Edit logo…</button><button id="lgFull" title="Show for the whole song"><i class="ti ti-arrows-horizontal"></i>Whole song</button><button id="lgDel"><i class="ti ti-trash"></i>Remove</button></div>':'<div class="nm" style="margin-top:6px">No logo</div>'}<div id="lgRows"></div>${g?'<div class="hint">Drag the logo on the picture to move it, drag a corner to resize. On the timeline (V4) drag its edges to show it only for part of the song.</div>':''}`;
+ box.innerHTML=`<div class="flexr" style="justify-content:space-between"><span class="muted"><i class="ti ti-badge"></i> Logo</span><button id="lgAdd"><i class="ti ti-photo-plus"></i>${g?'Replace logo':'Add logo'}</button></div>${g?'<div class="flexr" style="margin-top:6px;flex-wrap:wrap"><button id="lgFx"><i class="ti ti-sparkles"></i>Animation &amp; effects…</button><button id="lgEdit"><i class="ti ti-photo-edit"></i>Edit image…</button><button id="lgFull" title="Show for the whole song"><i class="ti ti-arrows-horizontal"></i>Whole song</button><button id="lgDel"><i class="ti ti-trash"></i>Remove</button></div>':'<div class="nm" style="margin-top:6px">No logo</div>'}<div id="lgRows"></div>${g?'<div class="hint">Drag the logo on the picture to move it, drag a corner to resize. On the timeline (V4) drag its edges to show it only for part of the song.</div>':''}`;
  $('#lgAdd').onclick=()=>$('#fLogo').click();
- if(g){$('#lgEdit').onclick=()=>openLogoEditor();$('#lgDel').onclick=()=>{P.logo=null;S.logoImg=null;S.logoSel=false;bump();buildLogoCtl();drawTL()};$('#lgFull').onclick=()=>{g.t0=0;g.t1=null;bump();drawTL()};
+ if(g){$('#lgFx').onclick=()=>openLogoFx();$('#lgEdit').onclick=()=>openLogoEditor();$('#lgDel').onclick=()=>{P.logo=null;S.logoImg=null;S.logoSel=false;bump();buildLogoCtl();drawTL()};$('#lgFull').onclick=()=>{g.t0=0;g.t1=null;bump();drawTL()};
   const rows=document.createElement('div');buildControls(rows,[['','',[{k:'opacity',label:'Opacity',type:'num',min:0.05,max:1,step:0.01,pct:true},{k:'scale',label:'Size',type:'num',min:0.02,max:1,step:0.005,pct:true},{k:'x',label:'Position X',type:'num',min:0,max:1,step:0.005,pct:true},{k:'y',label:'Position Y',type:'num',min:0,max:1,step:0.005,pct:true}]]],g,()=>bump());rows.querySelectorAll('.sech').forEach(h=>h.remove());rows.querySelectorAll('.row').forEach(r=>r.style.paddingLeft='0');$('#lgRows').appendChild(rows)}}
 function loadLogoFile(f){const rd=new FileReader();rd.onload=()=>{const im0=new Image();im0.onload=()=>{const m=Math.min(1,1024/Math.max(im0.naturalWidth,im0.naturalHeight));const cv=document.createElement('canvas');cv.width=Math.round(im0.naturalWidth*m);cv.height=Math.round(im0.naturalHeight*m);cv.getContext('2d').drawImage(im0,0,0,cv.width,cv.height);const src=cv.toDataURL('image/png');
  const im=new Image();im.onload=()=>{const keep=P.logo||{};P.logo={src,srcOrig:src,edit:null,x:keep.x??0.86,y:keep.y??0.12,scale:keep.scale??0.16,opacity:keep.opacity??0.9,t0:keep.t0||0,t1:keep.t1??null};S.logoImg=im;S.logoSel=true;bump();buildLogoCtl();showTab('leftP','media');drawTL();openLogoEditor()};im.src=src};im0.src=rd.result};rd.readAsDataURL(f)}
@@ -1278,7 +1334,7 @@ tl.addEventListener('mousedown',e=>{const r=tl.getBoundingClientRect(),x=e.clien
  if(S.tool==='zoom'){setZoom(S.pps*(e.altKey?0.6:1.6),x);return}
  {const lk=['V4','V3','V2B','V2','V1'].find(id=>ty[id]&&y>=ty[id].y&&y<ty[id].y+ty[id].h&&trkLocked(id));if(lk&&S.tool!=='hand'){drag={type:'scrub'};seek(x2t(x));if(e.detail===1)toast(`Track ${lk} is locked. Click the lock icon to edit it.`,1600);return}}
  if(y<ty.V4.y){drag={type:'scrub'};seek(x2t(x));return}
- if(y>=ty.V4.y&&y<ty.V4.y+ty.V4.h&&(S.tool==='select'||S.tool==='ripple')){if(P.logo){const a=t2x(P.logo.t0||0),b=t2x(P.logo.t1!=null?P.logo.t1:totalDur());if(x>=a-5&&x<=b+5){S.logoSel=true;drag={type:'logo',part:x-a<7?'in':b-x<7?'out':'body',x0:x,t0:P.logo.t0||0,t1:P.logo.t1!=null?P.logo.t1:totalDur()};drawTL();return}}drag={type:'scrub'};seek(x2t(x));return}
+ if(y>=ty.V4.y&&y<ty.V4.y+ty.V4.h&&(S.tool==='select'||S.tool==='ripple')){if(P.logo){const a=t2x(P.logo.t0||0),b=t2x(P.logo.t1!=null?P.logo.t1:totalDur());if(x>=a-5&&x<=b+5){if(e.detail===2){S.logoSel=true;drawTL();openLogoFx();return}S.logoSel=true;drag={type:'logo',part:x-a<7?'in':b-x<7?'out':'body',x0:x,t0:P.logo.t0||0,t1:P.logo.t1!=null?P.logo.t1:totalDur()};drawTL();return}}drag={type:'scrub'};seek(x2t(x));return}
  if(y>=ty.V1.y&&y<ty.V1.y+ty.V1.h&&(S.tool==='select'||S.tool==='ripple')){const bi=hitBgClip(x);S.bgFocus=true;if(bi>=0){const cb=P.bgClips[bi];S.bgSel=bi;bgSelChanged();pushUndo();drag={type:'bgclip',i:bi,part:x-t2x(cb.t0)<7?'in':t2x(cb.t1)-x<7?'out':'body',x0:x,t0:cb.t0,t1:cb.t1};drawTL();return}if(S.bgSel!==-1){S.bgSel=-1;bgSelChanged()}drag={type:'scrub'};seek(x2t(x));drawTL();return}
  S.bgFocus=false;
  if(y>=ty.V3.y&&y<ty.V3.y+ty.V3.h&&(S.tool==='select'||S.tool==='ripple')){const ci=hitCd(x);if(ci>=0){materializeCds();const cd=sched1().cds[ci];S.cdSel=ci;drag={type:'cd',mi:cd.mi,part:x-t2x(cd.t0)<7?'in':t2x(cd.t1)-x<7?'out':'body',x0:x,t0:cd.t0,t1:cd.t1};if(e.detail===2){openFxSec('Countdown');showTab('leftP','fx');drag=null}drawTL();return}S.cdSel=-1;{const ti=sched1().title;if(ti&&x>=t2x(ti.t0)-4&&x<=t2x(ti.t1)+4){if(e.detail===2){openTitleAnim();return}pushUndo();drag={type:'title',part:x-t2x(ti.t0)<7?'in':t2x(ti.t1)-x<7?'out':'body',x0:x,t0:ti.t0,t1:ti.t1};return}}drag={type:'scrub'};seek(x2t(x));return}
@@ -1891,7 +1947,7 @@ let ctxGi=-1;function hideCtx(){$('#ctxMenu').classList.remove('on')}
 let ctxT=0,ctxCd=-1,ctxBg=-1,ctxX=0,ctxY=0;
 function showCtx(e,items){const m=$('#ctxMenu');m.innerHTML=items.map(([c,l])=>c==='-'?'<hr style="border:0;border-top:1px solid var(--line2);margin:4px 0">':`<div data-c="${c}">${l}</div>`).join('');m.classList.add('on');m.style.left=Math.min(e.clientX,innerWidth-210)+'px';m.style.top=Math.min(e.clientY,innerHeight-m.offsetHeight-8)+'px'}
 tl.addEventListener('contextmenu',e=>{e.preventDefault();const r=tl.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,ty=trackY();ctxT=Math.max(0,x2t(x));ctxX=e.clientX;ctxY=r.top+(ty[lyrLane(S.lt)]||ty.V2).y;
- if(y>=ty.V4.y&&y<ty.V4.y+ty.V4.h){showCtx(e,P.logo?[['logoAdd','Replace logo…'],['logoFull','Show for the whole song'],['logoFrom','Start the logo here'],['logoTo','End the logo here'],['-'],['logoDel','Remove logo']]:[['logoAdd','Add logo…']]);return}
+ if(y>=ty.V4.y&&y<ty.V4.y+ty.V4.h){showCtx(e,P.logo?[['logoFx','Animation & effects…'],['logoAdd','Replace logo…'],['logoFull','Show for the whole song'],['logoFrom','Start the logo here'],['logoTo','End the logo here'],['-'],['logoDel','Remove logo']]:[['logoAdd','Add logo…']]);return}
  if(y>=ty.V1.y&&y<ty.V1.y+ty.V1.h){ctxBg=hitBgClip(x);const items=[['bgAdd','Add a background clip here']];if(ctxBg>=0){S.bgSel=ctxBg;bgSelChanged();drawTL();const cb=P.bgClips[ctxBg];items.push(['bgDup','Duplicate this background clip']);if(curT()>cb.t0+0.3&&curT()<cb.t1-0.3)items.push(['bgSplit','Split at the playhead']);items.push(['bgFull','Use for the whole song'],['-'],['bgDel','Delete this background clip'])}else items.push(['bgBase','Edit the whole-song background']);showCtx(e,items);return}
  if(y>=ty.V3.y&&y<ty.V3.y+ty.V3.h){ctxCd=hitCd(x);const items=[['cdAdd','Add countdown here']];if(ctxCd>=0)items.push(['cdDel','Delete this countdown']);if(P.countdowns)items.push(['-'],['cdReset','Reset countdowns to automatic']);items.push(['-'],['cdSettings','Countdown settings…']);{const ti=sched1().title;if(ti&&ctxCd<0&&x>=t2x(ti.t0)&&x<=t2x(ti.t1))items.unshift(['titleAnim','Title card animation…'],...(P.titleT?[['titleReset','Reset title card length']]:[]),['-'])}showCtx(e,items);return}
  if(P.duetOn){const other=S.lt===1?2:1,ol=ty[lyrLane(other)];if(ol&&y>=ol.y&&y<ol.y+ol.h)switchLyr(other,true)}
@@ -1903,7 +1959,7 @@ $('#ctxMenu').addEventListener('click',ev=>{const d=ev.target.closest('[data-c]'
  else if(c==='cdDel'){materializeCds();const cd=sched1().cds[ctxCd];if(cd&&cd.mi!=null){P.countdowns.splice(cd.mi,1);S.cdSel=-1;bump();drawTL()}}
  else if(c==='addWord'){openAddWord(ctxT,ctxX,ctxY)}else if(c==='bgAdd'){addBgClip(ctxT,bgTarget().type)}else if(c==='bgBase'){S.bgSel=-1;S.bgFocus=true;bgSelChanged();drawTL()}else if(c==='bgDel'){delBgClip(ctxBg)}else if(c==='bgDup'){const cb=P.bgClips[ctxBg];if(cb){pushUndo();const L=cb.t1-cb.t0;P.bgClips.push({t0:cb.t1,t1:+(cb.t1+L).toFixed(3),bg:{...cb.bg}});S.bgSel=P.bgClips.length-1;bgSelChanged();bump();drawTL()}}else if(c==='bgSplit'){const cb=P.bgClips[ctxBg];if(cb){pushUndo();const tt=+curT().toFixed(3);P.bgClips.push({t0:tt,t1:cb.t1,bg:{...cb.bg}});cb.t1=tt;S.bgSel=P.bgClips.length-1;bgSelChanged();bump();drawTL()}}else if(c==='bgFull'){const cb=P.bgClips[ctxBg];if(cb){pushUndo();P.bg={...cb.bg};P.bgClips.splice(ctxBg,1);S.bgSel=-1;bgSelChanged();bump();drawTL()}}else if(c==='duetOn'){act('duetOn')}else if(c==='duetOff'){act('duetOff')}else if(c==='titleAnim'){openTitleAnim()}else if(c==='titleReset'){P.titleT=null;bump();drawTL()}else if(c==='cdReset'){P.countdowns=null;S.cdSel=-1;bump();drawTL();toast('Countdowns are automatic again')}
  else if(c==='cdSettings'){openFxSec('Countdown');showTab('leftP','fx')}
- else if(c==='logoAdd')$('#fLogo').click();else if(c==='logoDel'){P.logo=null;S.logoImg=null;bump();buildLogoCtl();drawTL()}
+ else if(c==='logoFx')openLogoFx();else if(c==='logoAdd')$('#fLogo').click();else if(c==='logoDel'){P.logo=null;S.logoImg=null;bump();buildLogoCtl();drawTL()}
  else if(c==='logoFull'){P.logo.t0=0;P.logo.t1=null;bump();drawTL()}else if(c==='logoFrom'){P.logo.t0=Math.min(ctxT,(P.logo.t1??1e9)-0.2);bump();drawTL()}else if(c==='logoTo'){P.logo.t1=Math.max(ctxT,(P.logo.t0||0)+0.2);bump();drawTL()}});
 
 /* ---------- copy / paste word clips ---------- */
@@ -2046,6 +2102,7 @@ function monHit(p){const g=S.logoBox;const hs=10*p.k;
  return null}
 let mdrag=null;
 mon.addEventListener('mousedown',e=>{const p=monPt(e),hit=monHit(p);if(!hit){let ch=false;if(S.logoSel){S.logoSel=false;ch=true}if(S.lineSel!=null){S.lineSel=null;buildLineFxCtl();ch=true}if(ch)drawTL();return}e.preventDefault();pause();const h=hit.h;
+ if(h==='logo'&&e.detail===2){openLogoFx();return}
  if(h==='logo'||h==='logoSize'){S.logoSel=true;S.lineSel=null;buildLineFxCtl();const g=P.logo,W=mon.width,H=mon.height;mdrag={h,p0:p,x0:g.x,y0:g.y,s0:g.scale,c:{x:g.x*W,y:g.y*H}};mdrag.d0=Math.hypot(p.x-mdrag.c.x,p.y-mdrag.c.y);showTab('leftP','media')}
  else if(h==='cd'){const b=S.cdBox;mdrag={h,p0:p,cx:b.cx,cy:b.cy}}
  else{const b=hit.b;S.logoSel=false;if(S.lineSel!==b.li){S.lineSel=b.li;buildLineFxCtl();showTab('leftP','fx')}const T=fxTarget(b.li);if(!T)return;const o=toScreen(b,0,0);
