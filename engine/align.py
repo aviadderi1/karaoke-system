@@ -86,7 +86,7 @@ def normalize_words(words, lang):
     return out
 
 
-def separate_vocals(wav, sr, progress):
+def separate_vocals(wav, sr, progress, overlap=0.1):
     """wav: torch [C, N] float32 -> mono vocal stem at `sr`."""
     import torch
     from demucs.pretrained import get_model
@@ -106,7 +106,7 @@ def separate_vocals(wav, sr, progress):
     ref = wav.mean(0)
     mean, std = ref.mean(), ref.std() + 1e-8
     with torch.no_grad():
-        res = apply_model(model, ((wav - mean) / std)[None], shifts=1, split=True, overlap=0.25,
+        res = apply_model(model, ((wav - mean) / std)[None], shifts=1, split=True, overlap=overlap,
                           progress=True, device="cpu", num_workers=0)[0]
     res = res * std + mean
     voc = res[list(model.sources).index("vocals")].mean(0, keepdim=True)
