@@ -5,7 +5,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: ["0.25", "0.1"]
+        quant: ["0", "1"]
     runs-on: windows-latest
     defaults:
       run:
@@ -24,4 +24,7 @@ jobs:
           gh release download v1.0.4 -p '*.exe' -O prev.exe && 7z x -y prev.exe -ox >/dev/null && 7z x -y "$(ls x/\$PLUGINSDIR/app-64.7z)" -oapp >/dev/null
         env:
           GH_TOKEN: ${{ github.token }}
-      - run: TORCH_HOME="$PWD/app/resources/models" MMS_DIR="$RUNNER_TEMP/mms" python engine/speed_bench.py ${{ matrix.mode }}
+      - name: accuracy
+        run: cd engine && time TORCH_HOME="$PWD/../app/resources/models" MMS_DIR="$RUNNER_TEMP/mms" KL_QUANT=${{ matrix.quant }} python align_bench.py
+      - name: speed
+        run: TORCH_HOME="$PWD/app/resources/models" MMS_DIR="$RUNNER_TEMP/mms" KL_QUANT=${{ matrix.quant }} python engine/speed_bench.py 0.1

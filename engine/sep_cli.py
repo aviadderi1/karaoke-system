@@ -54,6 +54,7 @@ def main():
     ap.add_argument("--out")
     ap.add_argument("--vocals", action="store_true", help="the input is already a vocal stem")
     ap.add_argument("--models")
+    ap.add_argument("--cache", help="folder that keeps vocal stems of earlier auto-sync runs")
     ap.add_argument("--align-selftest", action="store_true")
     a = ap.parse_args()
 

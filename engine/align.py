@@ -136,6 +136,7 @@ def _mirror_download(models_dir, out):
 
 
 def load_model(models_dir, out):
+    import torch
     import torch.hub as hub
     import torchaudio
     try:  # frozen apps don't always find the system certificates
@@ -163,6 +164,8 @@ def load_model(models_dir, out):
     finally:
         _Bar.cb = None
     model.eval()
+    if os.environ.get("KL_QUANT") == "1":
+        model = torch.ao.quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
     return bundle, model
 
 
@@ -174,17 +177,46 @@ def emissions(model, wave, progress):
     hop_frames = None
     parts = []
     starts = list(range(0, n, win)) or [0]
+    # windows where the vocal stem is silent (intro, solo, outro) don't need the model:
+    # they get "nothing is being said" frames, which saves a lot of time on long instrumental parts
+    x = wave[0]
+    ref = float(x.abs().max()) or 1.0
+    def silent(a, b):
+        seg = x[a:b]
+        if seg.numel() < SR:
+            return False
+        hop = SR // 10
+        m = seg[: seg.numel() // hop * hop].reshape(-1, hop).pow(2).mean(1).sqrt()
+        return float(m.max()) < 0.02 * ref
+    blank_row = None
+    todo = []
     with torch.inference_mode():
         for k, s in enumerate(starts):
             a, b = max(0, s - ctx), min(n, s + win + ctx)
+            if silent(a, b):
+                parts.append(("blank", s))
+                continue
             em, _ = model(wave[:, a:b])
             em = em[0]
             ratio = (b - a) / em.shape[0]  # samples per frame (~320)
             f0 = int(round((s - a) / ratio))
             f1 = int(round((min(n, s + win) - a) / ratio))
             parts.append(em[f0:f1])
+            if blank_row is None:
+                blank_row = torch.full((em.shape[1],), -30.0)
+                blank_row[0] = 0.0  # index 0 is the CTC blank
             progress((k + 1) / len(starts))
-    em = torch.cat(parts, 0)
+    if blank_row is None:
+        raise RuntimeError("No singing was found in this song.")
+    out_parts = []
+    for p in parts:
+        if isinstance(p, tuple):
+            s = p[1]
+            frames = int(round((min(n, s + win) - s) / 320))
+            out_parts.append(blank_row.expand(frames, -1).clone())
+        else:
+            out_parts.append(p)
+    em = torch.cat(out_parts, 0)
     return em, n / em.shape[0]
 
 
@@ -267,15 +299,45 @@ def run(a, out):
     with open(a.lyrics, "r", encoding="utf-8") as f:
         L = json.load(f)
     words, lines = L["words"], L.get("lines") or [0] * len(L["words"])
-    sep_share = 0.0 if a.vocals else 0.45
+    sep_share = 0.0 if a.vocals else 0.58
     prog = lambda f: out(f"Q {f:.4f}")
 
     data, sr = sf.read(a.align, dtype="float32", always_2d=True)
     wav = torch.from_numpy(np.ascontiguousarray(data.T))
     duration = wav.shape[1] / sr
-    if not a.vocals:
-        out("S Separating the vocals from the music")
-        wav, sr = separate_vocals(wav, sr, lambda f: prog(sep_share * f))
+    cache_file = None
+    cache_dir = getattr(a, "cache", None)
+    if not a.vocals and cache_dir:
+        import hashlib
+        h = hashlib.sha1()
+        with open(a.align, "rb") as f:
+            for b in iter(lambda: f.read(1 << 20), b""):
+                h.update(b)
+        cache_file = os.path.join(cache_dir, h.hexdigest()[:20] + ".wav")
+    if cache_file and os.path.exists(cache_file):
+        # same song as an earlier run: reuse its vocal stem and skip the separation
+        out("S Separating the vocals from the music (reusing the last result)")
+        d, sr = sf.read(cache_file, dtype="float32", always_2d=True)
+        wav = torch.from_numpy(np.ascontiguousarray(d.T))
+        prog(sep_share)
+    else:
+        if not a.vocals:
+            out("S Separating the vocals from the music")
+            wav, sr = separate_vocals(wav, sr, lambda f: prog(sep_share * f))
+        wav = wav.mean(0, keepdim=True)
+        if sr != SR:
+            wav = torchaudio.functional.resample(wav, sr, SR)
+        sr = SR
+        if cache_file:
+            try:
+                os.makedirs(cache_dir, exist_ok=True)
+                old = sorted((os.path.join(cache_dir, n) for n in os.listdir(cache_dir) if n.endswith(".wav")), key=os.path.getmtime)
+                for o in old[:-5]:
+                    os.remove(o)
+                sf.write(cache_file + ".tmp.wav", wav[0].numpy(), SR, subtype="PCM_16")
+                os.replace(cache_file + ".tmp.wav", cache_file)
+            except Exception:
+                pass
     wav = wav.mean(0, keepdim=True)
     if sr != SR:
         wav = torchaudio.functional.resample(wav, sr, SR)
