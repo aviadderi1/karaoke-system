@@ -1,7 +1,7 @@
 {
   "name": "karaoke-system",
   "productName": "Karaoke Lab",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "Karaoke video studio with auto-sync, YouTube import and vocal removal.",
   "author": "AD SOUND & SERVICE",
   "license": "UNLICENSED",
