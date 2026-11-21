@@ -147,6 +147,28 @@ function createServer(opts) {
       return send(res, 404, { error: 'not found' });
     }
     if (req.method === 'POST') {
+      // background search on the web (Openverse: free Creative Commons photos, no account needed)
+      if (u.pathname === '/websearch') {
+        const q = (u.searchParams.get('q') || '').slice(0, 120), page = Math.max(1, Math.min(50, +u.searchParams.get('page') || 1));
+        const api = `https://api.openverse.org/v1/images/?q=${encodeURIComponent(q)}&page=${page}&page_size=20&aspect_ratio=wide&mature=false`;
+        fetch(api, { headers: { 'User-Agent': 'KaraokeLab/' + version + ' (desktop karaoke maker)' } }).then(r => r.ok ? r.json() : Promise.reject(new Error('The image search answered ' + r.status)))
+          .then(j => send(res, 200, { ok: true, pages: j.page_count || 1, items: (j.results || []).map(x => ({ id: x.id, url: x.url, thumb: x.thumbnail, title: x.title || '', creator: x.creator || '', license: ((x.license || '') + ' ' + (x.license_version || '')).trim(), w: x.width, h: x.height })) }))
+          .catch(e => send(res, 200, { ok: false, error: 'Could not reach the image search: ' + e.message }));
+        return;
+      }
+      // downloads a picture from the web for the canvas (same-origin, so video export keeps working)
+      if (u.pathname === '/webimg') {
+        const src = u.searchParams.get('u') || '';
+        if (!/^https?:\/\//i.test(src)) return send(res, 400, { error: 'bad url' });
+        fetch(src, { redirect: 'follow', headers: { 'User-Agent': 'KaraokeLab/' + version } }).then(async r => {
+          const ct = r.headers.get('content-type') || '';
+          if (!r.ok || !/^image\//i.test(ct)) throw new Error('not an image');
+          const b = Buffer.from(await r.arrayBuffer());
+          if (b.length > 40 * 1024 * 1024) throw new Error('too big');
+          res.writeHead(200, { 'Content-Type': ct, 'Content-Length': b.length, 'Cache-Control': 'max-age=3600' }); res.end(b);
+        }).catch(e => send(res, 502, { error: e.message }));
+        return;
+      }
       if (u.pathname === '/youtube') return readBody(req, b => { let url = ''; try { url = JSON.parse(b.toString() || '{}').url || ''; } catch (e) { } if (!/^https?:\/\//.test(url)) return send(res, 400, { error: 'bad url' }); const j = newJob('youtube'); runYoutube(j, url); send(res, 200, { job: j.id }); });
       if (u.pathname === '/separate') {
         let model = u.searchParams.get('model'); if (!MODELS[model]) model = 'htdemucs_ft';

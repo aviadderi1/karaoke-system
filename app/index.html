@@ -111,8 +111,15 @@ input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;bac
 #castMenu .dev{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:4px;cursor:pointer;color:#ddd}#castMenu .dev:hover{background:#2f2f2f;color:#fff}#castMenu .dev i{font-size:16px;color:#9a9a9a}
 #castMenu .dev.on{background:#24384f;color:#fff}#castMenu .dev.on i{color:#5fb0ff}#castMenu .note{color:#8a8a8a;padding:6px 8px;line-height:1.4}#castMenu label{display:flex;align-items:center;gap:6px;padding:6px 8px;color:#bbb;border-top:1px solid #333;margin-top:4px}
 #castBtn.on{color:#5fb0ff}
-#bgTarget{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;font-size:11.5px;color:var(--txt2);background:#1e1e1e;border:1px solid var(--line2);border-radius:4px;padding:5px 8px;margin-bottom:8px}#bgTarget b{color:#fff;font-weight:600}#bgTarget button{height:20px;padding:0 6px;font-size:11px}
-#bgCats{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}#bgCats span{font-size:11.5px;padding:3px 9px;border-radius:11px;background:#262626;border:1px solid var(--line2);color:var(--txt2);cursor:pointer;user-select:none}#bgCats span:hover{color:#fff;border-color:#555}#bgCats span.on{background:#3a3a3a;color:#fff;border-color:#777}
+#bgTarget:empty{display:none}#bgTarget{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;font-size:11.5px;color:var(--txt2);background:#1e1e1e;border:1px solid var(--line2);border-radius:4px;padding:5px 8px;margin-bottom:8px}#bgTarget b{color:#fff;font-weight:600}#bgTarget button{height:20px;padding:0 6px;font-size:11px}
+.spin{display:inline-block;animation:klspin 1s linear infinite}@keyframes klspin{to{transform:rotate(360deg)}}
+.bgBar{display:flex;gap:6px;margin-bottom:8px}.bgBar>button{flex:1;justify-content:center;gap:6px}
+.bgDD{position:relative;flex:1}#bgCatBtn{width:100%;justify-content:space-between}#bgCatBtn span{display:flex;align-items:center;gap:6px}
+#bgCats{display:none;position:absolute;top:calc(100% + 3px);left:0;right:0;background:#262626;border:1px solid #444;border-radius:6px;padding:4px;z-index:30;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.bgDD.open #bgCats{display:block}#bgCats div{padding:5px 9px;font-size:12px;border-radius:4px;color:#ccc;display:flex;justify-content:space-between;cursor:pointer}#bgCats div:hover{background:#333;color:#fff}#bgCats div.on{background:var(--acc);color:#fff}#bgCats i{opacity:.55;font-style:normal;font-size:11px}
+#bgWeb .srch{display:flex;gap:6px;margin-bottom:8px}#bgWeb input{flex:1;min-width:0;background:#1a1a1a;border:1px solid #444;border-radius:5px;color:#e6e6e6;padding:5px 8px;font-size:12px}#bgWeb input:focus{outline:none;border-color:var(--acc)}
+#bgWebRes{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}#bgWebRes div{aspect-ratio:16/9;border-radius:5px;background:#222 center/cover;position:relative;cursor:pointer;border:2px solid transparent;overflow:hidden}#bgWebRes div:hover{border-color:var(--acc)}#bgWebRes span{position:absolute;left:0;right:0;bottom:0;padding:1px 4px;font-size:9.5px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.75));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#bgWeb .note{font-size:10.5px;color:#888;margin-bottom:10px}#bgWebMore{width:100%;justify-content:center;margin-bottom:6px}
 .thumb[draggable=true]{cursor:grab}
 #awBox{position:fixed;z-index:65;display:none;background:#1b1b1b;border:1px solid var(--acc);border-radius:4px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,.6)}#awBox.on{display:flex;gap:4px}#awBox input{width:190px;height:26px;font-size:13px;background:#111;color:#fff;border:1px solid #555;border-radius:3px;padding:0 6px}#awBox .muted{font-size:10.5px}
 #updCard{position:fixed;right:18px;top:64px;z-index:70;width:330px;background:#262626;border:1px solid #3d3d3d;border-radius:8px;box-shadow:0 14px 40px rgba(0,0,0,.6);padding:14px 16px;display:none;font-size:12.5px;color:#ddd}
@@ -410,7 +417,11 @@ input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;bac
    <div class="ptabs"><span data-t="bg" class="on">Backgrounds</span><span data-t="export">Export</span><i class="ti ti-x pclose" data-close="R" title="Close this panel (Window menu brings it back)"></i></div>
    <div class="pbody on" data-b="bg">
     <div id="bgTarget"></div>
-    <div id="bgCats"></div>
+    <div class="bgBar"><div class="bgDD" id="bgDD"><button id="bgCatBtn"><span><i class="ti ti-category"></i><b id="bgCatName" style="font-weight:500"></b></span><i class="ti ti-chevron-down"></i></button><div id="bgCats"></div></div></div>
+    <div class="bgBar"><button id="bgWebBtn"><i class="ti ti-world-search"></i>Search online</button><button id="bgUpBtn"><i class="ti ti-upload"></i>Upload image</button></div>
+    <div id="bgWeb" hidden><div class="srch"><input id="bgWebQ" placeholder="Search photos, e.g. sunset beach"><button id="bgWebGo"><i class="ti ti-search"></i></button></div>
+     <div id="bgWebRes"></div><button id="bgWebMore" hidden>More results</button>
+     <div class="note">Free photos from Openverse (Creative Commons licences). English words find the most. Click a photo to set it as the background.</div></div>
     <div class="thumbs" id="thumbs"></div>
     <div id="bgCtl" style="margin-top:6px"></div>
     <div class="sec"><div class="sech"><i class="ti ti-chevron-down"></i><span class="fx">src</span>Your media</div><div class="secb">
@@ -1053,7 +1064,7 @@ function addBgClip(t,type){pushUndo();const cl=bgClips();const dur=totalDur()||t
 function bgSelChanged(){buildBgCtl();markThumb();showTab('rightP','bg');const lab=$('#bgTarget');if(!lab)return;const cl=P.bgClips||[];
  if(S.bgSel>=0&&cl[S.bgSel]){const c=cl[S.bgSel];lab.innerHTML=`<span><i class="ti ti-layers-subtract"></i> Editing <b>background clip ${S.bgSel+1}</b> · ${tc(c.t0).slice(3,8)}–${tc(c.t1).slice(3,8)}</span><span class="flexr"><button class="ghost" id="bgtBase" title="Edit the whole-song background">Whole song</button><button class="ghost" id="bgtDel" title="Delete this background clip"><i class="ti ti-trash"></i></button></span>`;
   $('#bgtBase').onclick=()=>{S.bgSel=-1;bgSelChanged();drawTL()};$('#bgtDel').onclick=()=>delBgClip(S.bgSel)}
- else lab.innerHTML=`<span><i class="ti ti-movie"></i> Editing <b>the whole-song background</b></span><span class="small muted">Drag a background onto V1 to add one for part of the song</span>`}
+ else lab.innerHTML=''}
 function delBgClip(i){const cl=bgClips();if(!cl[i])return;pushUndo();cl.splice(i,1);S.bgSel=-1;bgSelChanged();bump();drawTL()}
 function hitBgClip(x){const cl=P.bgClips||[];for(let i=cl.length-1;i>=0;i--){const a=t2x(cl[i].t0),b=t2x(cl[i].t1);if(x>=a-5&&x<=b+5)return i}return -1}
 function cover(ctx,el,w,h,W,H,z=1){if(!w||!h)return;const s=Math.max(W/w,H/h)*z;const dw=w*s,dh=h*s;ctx.drawImage(el,(W-dw)/2,(H-dh)/2,dw,dh)}
@@ -1107,7 +1118,8 @@ function restoreLogo(){S.logoImg=null;if(P.logo&&P.logo.src){const im=new Image(
 function buildFx(){buildControls($('#fxCtl'),STYLE_SCHEMA,P.style,(k,rebuild)=>{if(k==='font'||k==='weight')document.fonts.load(fontStr(72),'אבג abc').then(bump);if(k==='lineAnim'||k==='wordFx'||k==='fade')syncTplCtl();bump();if(rebuild)buildFx()},FX_OPEN);buildClipSec();if($('#tplAnim'))syncTplCtl(),markTpl()}
 function buildBgCtl(){const tg=bgTarget();buildControls($('#bgCtl'),BG_SCHEMA(tg),tg,(k,rb)=>{bump();drawTL()})}
 S.bgCat=(()=>{try{return localStorage.getItem('kl_bgcat')||'party'}catch(e){return 'party'}})();
-function buildThumbs(){const cats=$('#bgCats');cats.innerHTML='';BG_CATS.forEach(([id,name])=>{const c=document.createElement('span');c.textContent=name;c.dataset.c=id;c.className=id===S.bgCat?'on':'';c.onclick=()=>{S.bgCat=id;try{localStorage.setItem('kl_bgcat',id)}catch(e){}buildThumbs()};cats.appendChild(c)});
+function buildThumbs(){const cats=$('#bgCats');cats.innerHTML='';BG_CATS.forEach(([id,name])=>{const c=document.createElement('div');c.innerHTML=`${name}<i>${BG_PRESETS.filter(p=>p.cat===id).length||''}</i>`;c.dataset.c=id;c.className=id===S.bgCat?'on':'';c.onclick=e=>{e.stopPropagation();S.bgCat=id;$('#bgDD').classList.remove('open');try{localStorage.setItem('kl_bgcat',id)}catch(e){}buildThumbs()};cats.appendChild(c)});
+ $('#bgCatName').textContent=(BG_CATS.find(c=>c[0]===S.bgCat)||BG_CATS[0])[1];
  const box=$('#thumbs');box.innerHTML='';BG_PRESETS.filter(p=>p.cat===S.bgCat).forEach(p=>{const d=document.createElement('div');d.className='thumb';d.dataset.id=p.id;d.draggable=true;d.title='Click to use · drag onto V1 to use it for part of the song';d.innerHTML=`<canvas width="160" height="90"></canvas><span>${p.name}</span>`;
  d.ondragstart=e=>{e.dataTransfer.setData('text/plain','kl-bg:'+p.id);e.dataTransfer.effectAllowed='copy';S.bgDrag=p.id};d.ondragend=()=>{S.bgDrag=null;S.bgDropX=null;drawTL()};
  d.onclick=()=>{if(p.id==='image'&&!S.imgEl){$('#fImg').click();return}if(p.id==='video'&&!vid.src){$('#fVid').dataset.bg='1';$('#fVid').click();return}pushUndo();const tg=bgTarget();Object.assign(tg,presetDef(p.id));tg.type=p.id;markThumb();buildBgCtl();bump();drawTL()};box.appendChild(d)});drawThumbs();markThumb()}
@@ -1593,6 +1605,29 @@ $('#fSong').onchange=e=>{const f=e.target.files[0];if(f)loadSong(f);e.target.val
 $('#fVid').onchange=e=>{const f=e.target.files[0];if(f){const asBg=e.target.dataset.bg==='1';loadVideo(URL.createObjectURL(f),f.name,!asBg,f);toast(asBg?'Background video set':'Video imported as clip')}e.target.value=''};
 $('#fLogo').onchange=e=>{const f=e.target.files[0];if(f)loadLogoFile(f);e.target.value=''};
 $('#fImg').onchange=e=>{const f=e.target.files[0];if(f)loadImage(f);e.target.value=''};
+// backgrounds panel: category menu, upload, web search
+$('#bgCatBtn').onclick=e=>{e.stopPropagation();$('#bgDD').classList.toggle('open')};
+addEventListener('mousedown',e=>{const d=$('#bgDD');if(d&&d.classList.contains('open')&&!d.contains(e.target))d.classList.remove('open')});
+$('#bgUpBtn').onclick=()=>$('#fImg').click();
+$('#bgWebBtn').onclick=()=>{const w=$('#bgWeb');w.hidden=!w.hidden;$('#bgWebBtn').classList.toggle('on',!w.hidden);if(!w.hidden)setTimeout(()=>$('#bgWebQ').focus(),0)};
+const WEB={q:'',page:1,pages:1,busy:false};
+async function webSearch(more){const q=$('#bgWebQ').value.trim();if(!q||WEB.busy)return;if(!more){WEB.q=q;WEB.page=1;$('#bgWebRes').innerHTML=''}else WEB.page++;
+ WEB.busy=true;$('#bgWebGo').innerHTML='<i class="ti ti-loader-2 spin"></i>';let r;
+ try{r=HELPER!==''||DESKTOP?await (await fetch(HELPER+'/websearch?q='+encodeURIComponent(WEB.q)+'&page='+WEB.page)).json():null;
+  if(!r){const j=await (await fetch(`https://api.openverse.org/v1/images/?q=${encodeURIComponent(WEB.q)}&page=${WEB.page}&page_size=20&aspect_ratio=wide&mature=false`)).json();r={ok:true,pages:j.page_count||1,items:(j.results||[]).map(x=>({id:x.id,url:x.url,thumb:x.thumbnail,title:x.title||'',creator:x.creator||'',license:x.license||''}))}}}
+ catch(e){r={ok:false,error:'Could not reach the image search. Check the internet connection.'}}
+ WEB.busy=false;$('#bgWebGo').innerHTML='<i class="ti ti-search"></i>';
+ if(!r.ok){toast(r.error||'Search failed');return}WEB.pages=r.pages||1;
+ if(!r.items.length&&!more){$('#bgWebRes').innerHTML='<p class="muted small" style="grid-column:1/-1">No photos found. Try other words, in English.</p>'}
+ r.items.forEach(it=>{const d=document.createElement('div');const th=(HELPER!==''||DESKTOP)&&it.thumb?HELPER+'/webimg?u='+encodeURIComponent(it.thumb):it.thumb;d.style.backgroundImage=`url("${th}")`;d.title=`${it.title}${it.creator?' · by '+it.creator:''} · ${(it.license||'').toUpperCase()}`;d.innerHTML=`<span>${esc(it.title||'Photo')}</span>`;d.onclick=()=>useWebImage(it,d);$('#bgWebRes').appendChild(d)});
+ $('#bgWebMore').hidden=WEB.page>=WEB.pages||!r.items.length}
+async function useWebImage(it,el){toast('Downloading the photo…',15000);el.style.opacity=.5;
+ try{const src=(HELPER!==''||DESKTOP)?HELPER+'/webimg?u='+encodeURIComponent(it.url):it.url;let b=await fetch(src).then(r=>{if(!r.ok)throw 0;return r.blob()}).catch(()=>null);
+  if(!b&&it.thumb){b=await fetch((HELPER!==''||DESKTOP)?HELPER+'/webimg?u='+encodeURIComponent(it.thumb):it.thumb).then(r=>r.ok?r.blob():null).catch(()=>null)}
+  if(!b)throw new Error('This photo is not available any more. Try another one.');
+  const ext=(b.type.split('/')[1]||'jpg').replace('jpeg','jpg');loadImage(new File([b],(it.title||'web-photo').replace(/[^\w\- ]+/g,'').slice(0,40)+'.'+ext,{type:b.type}))}
+ catch(e){toast(e.message||'Could not download this photo')}el.style.opacity=1}
+$('#bgWebGo').onclick=()=>webSearch(false);$('#bgWebQ').onkeydown=e=>{e.stopPropagation();if(e.key==='Enter')webSearch(false)};$('#bgWebMore').onclick=()=>webSearch(true);
 $('#fLyr').onchange=async e=>{const f=e.target.files[0];if(f)await importLyrFile(f);e.target.value=''};
 $('#fProj').onchange=async e=>{const f=e.target.files[0];if(f)await openProject(f);e.target.value=''};
 async function importLyrFile(f){const txt=await f.text();pushUndo();if(/\[\d+:\d+/.test(txt))importLRC(txt);else{$('#lyr').value=txt;applyText(txt,false)}workspace('lyrics');toast('Lyrics imported')}
