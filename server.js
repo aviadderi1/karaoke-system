@@ -144,9 +144,6 @@ function createServer(opts) {
       if (u.pathname.startsWith('/icons/fonts/')) return sendFile(res, path.join(appDir, 'icons', 'fonts', path.basename(decodeURIComponent(u.pathname))));
       if (u.pathname.startsWith('/manual/')) return sendFile(res, path.join(appDir, 'manual', path.basename(decodeURIComponent(u.pathname))));
       if (u.pathname.startsWith('/fonts/')) return sendFile(res, path.join(appDir, 'fonts', path.basename(decodeURIComponent(u.pathname))));
-      return send(res, 404, { error: 'not found' });
-    }
-    if (req.method === 'POST') {
       // background search on the web (Openverse: free Creative Commons photos, no account needed)
       if (u.pathname === '/websearch') {
         const q = (u.searchParams.get('q') || '').slice(0, 120), page = Math.max(1, Math.min(50, +u.searchParams.get('page') || 1));
@@ -169,6 +166,9 @@ function createServer(opts) {
         }).catch(e => send(res, 502, { error: e.message }));
         return;
       }
+      return send(res, 404, { error: 'not found' });
+    }
+    if (req.method === 'POST') {
       if (u.pathname === '/youtube') return readBody(req, b => { let url = ''; try { url = JSON.parse(b.toString() || '{}').url || ''; } catch (e) { } if (!/^https?:\/\//.test(url)) return send(res, 400, { error: 'bad url' }); const j = newJob('youtube'); runYoutube(j, url); send(res, 200, { job: j.id }); });
       if (u.pathname === '/separate') {
         let model = u.searchParams.get('model'); if (!MODELS[model]) model = 'htdemucs_ft';
