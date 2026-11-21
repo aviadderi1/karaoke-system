@@ -89,7 +89,7 @@ input[type=checkbox]{accent-color:var(--acc)}
 .lbl{color:var(--txt2);font-size:11px;margin:6px 0 4px}
 /* lyrics */
 #lyrTabs{display:flex;gap:2px;margin-bottom:4px}#lyrTabs span{flex:1;text-align:center;padding:4px 0;border-radius:3px;background:#222;color:var(--txt2);cursor:pointer;font-size:12px;border:1px solid var(--line2)}#lyrTabs span.on{background:#2b2b2b;color:#fff;border-color:#555}#lyrTabs span[data-l="2"].on{border-color:#d65a9c;color:#ffd0e8}
-#lyr{flex:1;min-height:200px;resize:none;font-family:var(--mono);font-size:13px;line-height:1.75;background:#181818;color:#e6e6e6;padding:8px 10px;white-space:pre;overflow:auto;user-select:text}
+#lyr{flex:1;margin-top:8px;min-height:200px;resize:none;font-family:var(--mono);font-size:13px;line-height:1.75;background:#181818;color:#e6e6e6;padding:8px 10px;white-space:pre;overflow:auto;user-select:text}
 #lyr[dir=rtl]{font-family:'Heebo',var(--mono)}
 .results{max-height:180px;overflow:auto;border:1px solid var(--line2);border-radius:3px;margin:6px 0;display:none;background:#1c1c1c}
 .results div{padding:5px 8px;border-bottom:1px solid var(--line);cursor:pointer;display:flex;gap:6px;align-items:center}
@@ -242,7 +242,7 @@ input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;bac
 .fxhide{display:none!important}
 #drop{position:fixed;inset:0;border:3px dashed var(--acc);background:rgba(45,140,235,.08);display:none;z-index:95;align-items:center;justify-content:center;font-size:20px;color:#fff;pointer-events:none}
 #drop.on{display:flex}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px}.grid2>input{min-width:0;width:100%}
 .hint{color:var(--txt2);font-size:11px;line-height:1.5;margin:6px 0}
 .kbd{font-family:var(--mono);font-size:10.5px;border:1px solid var(--line2);border-radius:3px;padding:0 4px;color:var(--hi)}
 .flexr{display:flex;gap:6px;align-items:center}
@@ -284,8 +284,7 @@ input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;bac
   </div></div>
   <div class="menu"><span>Lyrics</span><div class="drop">
    <div data-a="wsLyrics">Edit lyrics</div>
-   <div data-a="search">Find lyrics online</div>
-   <div data-a="webLyrics">Search the web for lyrics…</div><hr>
+   <div data-a="webLyrics">Search lyrics on web…</div><hr>
    <div data-a="autoSpread">Auto-time words inside timed lines</div>
   </div></div>
   <div class="menu"><span>Sync</span><div class="drop">
@@ -336,10 +335,9 @@ input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;bac
    <div class="ptabs"><span data-t="lyrics" class="on">Lyrics</span><span data-t="fx">Effects</span><span data-t="tpl">Templates</span><span data-t="vfx">Video FX</span><span data-t="media">Media</span><i class="ti ti-x pclose" data-close="L" title="Close this panel (Window menu brings it back)"></i></div>
    <div class="pbody on" data-b="lyrics">
     <div class="grid2"><input type="text" id="artist" placeholder="Artist"><input type="text" id="title" placeholder="Song title"></div>
-    <div class="flexr" style="margin-top:6px"><button class="pri" id="searchBtn"><i class="ti ti-search"></i>Find lyrics</button><button id="webBtn" title="Open a built-in browser with the search ready; select the lyrics and send them here"><i class="ti ti-world-search"></i>Search the web</button><button id="impLyrBtn" title="Import .lrc / .txt"><i class="ti ti-file-import"></i></button></div>
-    <div class="small muted" id="searchState" style="margin-top:4px;min-height:14px"></div>
-    <div class="results" id="results"></div>
-    <div class="flexr" style="margin:8px 0 4px;justify-content:space-between"><span class="lbl" style="margin:0">One line = one subtitle · split syllables with /</span><span class="small muted" id="lyrStats"></span></div>
+    <div class="flexr" style="margin-top:6px"><button class="pri" id="searchBtn" style="display:none"><i class="ti ti-search"></i>Find lyrics</button><button class="pri" id="webBtn" style="flex:1;justify-content:center" title="Open a built-in browser with the search ready; select the lyrics and send them here"><i class="ti ti-world-search"></i>Search lyrics on web</button><button id="impLyrBtn" title="Import .lrc / .txt"><i class="ti ti-file-import"></i></button></div>
+    <div id="searchState" hidden></div><div class="results" id="results" hidden></div>
+    <div class="flexr" style="display:none"><span class="lbl" style="margin:0">One line = one subtitle · split syllables with /</span><span class="small muted" id="lyrStats"></span></div>
     <div id="lyrTabs" style="display:none"><span data-l="1">Lyrics 1</span><span data-l="2">Lyrics 2 · Duet</span></div>
     <textarea id="lyr" spellcheck="false" placeholder="Paste or type the lyrics here.&#10;&#10;Here comes the mor/ning&#10;light over the city"></textarea>
     <div class="flexr" style="margin-top:6px"><button class="pri" data-a="autosync"><i class="ti ti-wand"></i>Auto-sync</button><button id="toSync"><i class="ti ti-keyboard"></i>Tap sync</button><button id="spreadBtn" title="Spread words evenly inside lines that only have line timing"><i class="ti ti-arrows-split-2"></i>Auto-time words</button></div>
