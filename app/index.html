@@ -187,7 +187,7 @@ input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;bac
 .trk .tb.on.m{background:#2f8f5b;border-color:#3fbf7a;color:#fff}
 .trk .tb.on.s{background:#c9a227;border-color:#e8c34a;color:#2a2000}
 .trk.dim .nm{opacity:.45}
-.trk b{font-weight:500;color:#ddd;background:#363636;border-radius:2px;padding:0 4px;font-family:var(--mono);font-size:10.5px}
+.trk b{display:none}
 
 #tlcwrap{position:relative;min-width:0;overflow:hidden}
 #tl{display:block;position:absolute;left:0;top:0;width:100%;height:100%}
@@ -1346,7 +1346,7 @@ tl.addEventListener('mousedown',e=>{const r=tl.getBoundingClientRect(),x=e.clien
  if(S.tool==='hand'||e.button===1){drag={type:'pan',x0:x,s0:S.scroll};return}
  if(e.detail===2&&e.button===0&&Math.abs(x-t2x(curT()))<=7&&y<ty.V4.y){drag=null;zoom50();return}
  if(S.tool==='zoom'){setZoom(S.pps*(e.altKey?0.6:1.6),x);return}
- {const lk=['V4','V3','V2B','V2','V1'].find(id=>ty[id]&&y>=ty[id].y&&y<ty[id].y+ty[id].h&&trkLocked(id));if(lk&&S.tool!=='hand'){drag={type:'scrub'};seek(x2t(x));if(e.detail===1)toast(`Track ${lk} is locked. Click the lock icon to edit it.`,1600);return}}
+ {const lk=['V4','V3','V2B','V2','V1'].find(id=>ty[id]&&y>=ty[id].y&&y<ty[id].y+ty[id].h&&trkLocked(id));if(lk&&S.tool!=='hand'){drag={type:'scrub'};seek(x2t(x));if(e.detail===1)toast(`The ${(tracks().find(x=>x.id===lk)||{name:lk}).name} track is locked. Click the lock icon to edit it.`,1600);return}}
  if(y<ty.V4.y){drag={type:'scrub'};seek(x2t(x));return}
  if(y>=ty.V4.y&&y<ty.V4.y+ty.V4.h&&(S.tool==='select'||S.tool==='ripple')){if(P.logo){const a=t2x(P.logo.t0||0),b=t2x(P.logo.t1!=null?P.logo.t1:totalDur());if(x>=a-5&&x<=b+5){if(e.detail===2){S.logoSel=true;drawTL();openLogoFx();return}S.logoSel=true;drag={type:'logo',part:x-a<7?'in':b-x<7?'out':'body',x0:x,t0:P.logo.t0||0,t1:P.logo.t1!=null?P.logo.t1:totalDur()};drawTL();return}}drag={type:'scrub'};seek(x2t(x));return}
  if(y>=ty.V1.y&&y<ty.V1.y+ty.V1.h&&(S.tool==='select'||S.tool==='ripple')){const bi=hitBgClip(x);S.bgFocus=true;if(bi>=0){const cb=P.bgClips[bi];S.bgSel=bi;bgSelChanged();pushUndo();drag={type:'bgclip',i:bi,part:x-t2x(cb.t0)<7?'in':t2x(cb.t1)-x<7?'out':'body',x0:x,t0:cb.t0,t1:cb.t1};drawTL();return}if(S.bgSel!==-1){S.bgSel=-1;bgSelChanged()}drag={type:'scrub'};seek(x2t(x));drawTL();return}
